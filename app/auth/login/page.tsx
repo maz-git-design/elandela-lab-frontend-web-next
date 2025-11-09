@@ -2,13 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
-import { Microscope } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -44,8 +44,14 @@ export default function LoginPage() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl mb-4">
-            <Microscope className="w-7 h-7 text-white" />
+          <div className="inline-flex items-center justify-center mb-4">
+            <Image
+              src="/elab-simple.png"
+              alt="Lab Manager Logo"
+              width={80}
+              height={80}
+              priority
+            />
           </div>
           <h1 className="text-3xl font-semibold text-slate-900 mb-2">Lab Manager</h1>
           <p className="text-slate-600">Laboratory Management System</p>
