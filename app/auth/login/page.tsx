@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center mb-4">
             <Image
-              src="/elab-simple.png"
+              src="/auth/e-landela-logo-2.png"
               alt="Lab Manager Logo"
               width={80}
               height={80}
