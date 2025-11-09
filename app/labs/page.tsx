@@ -18,7 +18,9 @@ import {
   Trash2,
   Search,
   MapPin,
-  Users
+  Users,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -77,6 +79,12 @@ export default function LabsPage() {
   const [editingCategory, setEditingCategory] = useState<EquipmentCategory | null>(null)
 
   const [searchTerm, setSearchTerm] = useState('')
+  const [searchTermLabs, setSearchTermLabs] = useState('')
+  const [searchTermCategories, setSearchTermCategories] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPageLabs, setCurrentPageLabs] = useState(1)
+  const [currentPageCategories, setCurrentPageCategories] = useState(1)
+  const itemsPerPage = 10
 
   const [labForm, setLabForm] = useState({
     name: '',
@@ -279,6 +287,24 @@ export default function LabsPage() {
     e.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     e.code.toLowerCase().includes(searchTerm.toLowerCase())
   )
+  const totalPagesEquipment = Math.ceil(filteredEquipment.length / itemsPerPage)
+  const startIndexEquipment = (currentPage - 1) * itemsPerPage
+  const paginatedEquipment = filteredEquipment.slice(startIndexEquipment, startIndexEquipment + itemsPerPage)
+
+  const filteredLabs = labs.filter(l =>
+    l.name.toLowerCase().includes(searchTermLabs.toLowerCase()) ||
+    (l.code && l.code.toLowerCase().includes(searchTermLabs.toLowerCase()))
+  )
+  const totalPagesLabs = Math.ceil(filteredLabs.length / itemsPerPage)
+  const startIndexLabs = (currentPageLabs - 1) * itemsPerPage
+  const paginatedLabs = filteredLabs.slice(startIndexLabs, startIndexLabs + itemsPerPage)
+
+  const filteredCategories = categories.filter(c =>
+    c.name.toLowerCase().includes(searchTermCategories.toLowerCase())
+  )
+  const totalPagesCategories = Math.ceil(filteredCategories.length / itemsPerPage)
+  const startIndexCategories = (currentPageCategories - 1) * itemsPerPage
+  const paginatedCategories = filteredCategories.slice(startIndexCategories, startIndexCategories + itemsPerPage)
 
   const equipmentStats = {
     total: equipment.length,
@@ -319,10 +345,24 @@ export default function LabsPage() {
                     <CardTitle className="text-lg font-semibold">Laboratory Facilities</CardTitle>
                     <CardDescription>Manage lab spaces and facilities</CardDescription>
                   </div>
-                  <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Lab
-                  </Button>
+                  <div className="flex gap-2">
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="Search labs..."
+                        value={searchTermLabs}
+                        onChange={(e) => {
+                          setSearchTermLabs(e.target.value)
+                          setCurrentPageLabs(1)
+                        }}
+                        className="pl-10 border-gray-200"
+                      />
+                    </div>
+                    <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Lab
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -341,8 +381,9 @@ export default function LabsPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {labs.map(lab => (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {paginatedLabs.map(lab => (
                       <div key={lab.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex items-start justify-between mb-2">
                           <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -414,7 +455,37 @@ export default function LabsPage() {
                         </div>
                       </div>
                     ))}
-                  </div>
+                    </div>
+
+                    {totalPagesLabs > 1 && (
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                        <div className="text-sm text-gray-600">
+                          Showing {startIndexLabs + 1} to {Math.min(startIndexLabs + itemsPerPage, filteredLabs.length)} of {filteredLabs.length} labs
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPageLabs(prev => Math.max(1, prev - 1))}
+                            disabled={currentPageLabs === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm text-gray-600">
+                            Page {currentPageLabs} of {totalPagesLabs}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPageLabs(prev => Math.min(totalPagesLabs, prev + 1))}
+                            disabled={currentPageLabs === totalPagesLabs}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -497,20 +568,28 @@ export default function LabsPage() {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                   </div>
                 ) : (
-                  <div className="relative overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3">Name</th>
-                          <th className="px-6 py-3">Code</th>
-                          <th className="px-6 py-3">Serial Number</th>
-                          <th className="px-6 py-3">Category</th>
-                          <th className="px-6 py-3">Status</th>
-                          <th className="px-6 py-3">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredEquipment.map((item) => (
+                  <>
+                    <div className="relative overflow-x-auto">
+                      <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                          <tr>
+                            <th className="px-6 py-3 border-b border-gray-200">Name</th>
+                            <th className="px-6 py-3 border-b border-gray-200">Code</th>
+                            <th className="px-6 py-3 border-b border-gray-200">Serial Number</th>
+                            <th className="px-6 py-3 border-b border-gray-200">Category</th>
+                            <th className="px-6 py-3 border-b border-gray-200">Status</th>
+                            <th className="px-6 py-3 border-b border-gray-200">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedEquipment.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                                No equipment found
+                              </td>
+                            </tr>
+                          ) : (
+                            paginatedEquipment.map((item) => (
                           <tr key={item.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
                             <td className="px-6 py-4 font-medium text-gray-900">
                               {item.name}
@@ -557,10 +636,41 @@ export default function LabsPage() {
                               </div>
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {totalPagesEquipment > 1 && (
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                        <div className="text-sm text-gray-600">
+                          Showing {startIndexEquipment + 1} to {Math.min(startIndexEquipment + itemsPerPage, filteredEquipment.length)} of {filteredEquipment.length} items
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm text-gray-600">
+                            Page {currentPage} of {totalPagesEquipment}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage(prev => Math.min(totalPagesEquipment, prev + 1))}
+                            disabled={currentPage === totalPagesEquipment}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -574,10 +684,24 @@ export default function LabsPage() {
                     <CardTitle className="text-lg font-semibold">Equipment Categories</CardTitle>
                     <CardDescription>Organize equipment by category</CardDescription>
                   </div>
-                  <Button onClick={() => setShowCategoryDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Category
-                  </Button>
+                  <div className="flex gap-2">
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="Search categories..."
+                        value={searchTermCategories}
+                        onChange={(e) => {
+                          setSearchTermCategories(e.target.value)
+                          setCurrentPageCategories(1)
+                        }}
+                        className="pl-10 border-gray-200"
+                      />
+                    </div>
+                    <Button onClick={() => setShowCategoryDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Category
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -586,8 +710,9 @@ export default function LabsPage() {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {categories.map(category => (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {paginatedCategories.map(category => (
                       <div key={category.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                         <div className="flex items-start justify-between mb-2">
                           <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
@@ -621,8 +746,38 @@ export default function LabsPage() {
                         <h4 className="font-semibold text-gray-900 mb-1">{category.name}</h4>
                         <p className="text-sm text-gray-600">{category.description || 'No description'}</p>
                       </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+
+                    {totalPagesCategories > 1 && (
+                      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                        <div className="text-sm text-gray-600">
+                          Showing {startIndexCategories + 1} to {Math.min(startIndexCategories + itemsPerPage, filteredCategories.length)} of {filteredCategories.length} categories
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPageCategories(prev => Math.max(1, prev - 1))}
+                            disabled={currentPageCategories === 1}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="text-sm text-gray-600">
+                            Page {currentPageCategories} of {totalPagesCategories}
+                          </span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPageCategories(prev => Math.min(totalPagesCategories, prev + 1))}
+                            disabled={currentPageCategories === totalPagesCategories}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>

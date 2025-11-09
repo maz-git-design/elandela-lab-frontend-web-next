@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Users as UsersIcon, Plus, UserPlus, UserCheck } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Users as UsersIcon, Plus, UserPlus, UserCheck, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const users = [
   {
@@ -63,6 +65,24 @@ function getRoleColor(role: string) {
 }
 
 export default function UsersPage() {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  const filteredUsers = users.filter(user => {
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      user.fullName.toLowerCase().includes(searchLower) ||
+      user.email.toLowerCase().includes(searchLower) ||
+      user.role.toLowerCase().includes(searchLower) ||
+      user.department.toLowerCase().includes(searchLower)
+    )
+  })
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage)
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -125,26 +145,49 @@ export default function UsersPage() {
 
         <Card className="border-none shadow-sm">
           <CardHeader>
-            <CardTitle>User Directory</CardTitle>
-            <CardDescription>View and manage all system users</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>User Directory</CardTitle>
+                <CardDescription>View and manage all system users</CardDescription>
+              </div>
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value)
+                    setCurrentPage(1)
+                  }}
+                  className="pl-9"
+                />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="relative overflow-x-auto">
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3">Name</th>
-                    <th className="px-6 py-3">Email</th>
-                    <th className="px-6 py-3">Role</th>
-                    <th className="px-6 py-3">Department</th>
-                    <th className="px-6 py-3">Cohort</th>
-                    <th className="px-6 py-3">Phone</th>
-                    <th className="px-6 py-3">Actions</th>
+                    <th className="px-6 py-3 border-b border-gray-200">Name</th>
+                    <th className="px-6 py-3 border-b border-gray-200">Email</th>
+                    <th className="px-6 py-3 border-b border-gray-200">Role</th>
+                    <th className="px-6 py-3 border-b border-gray-200">Department</th>
+                    <th className="px-6 py-3 border-b border-gray-200">Cohort</th>
+                    <th className="px-6 py-3 border-b border-gray-200">Phone</th>
+                    <th className="px-6 py-3 border-b border-gray-200">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id} className="bg-white border-b hover:bg-gray-50">
+                  {paginatedUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                        No users found
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedUsers.map((user) => (
+                      <tr key={user.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
                       <td className="px-6 py-4 font-medium text-gray-900">
                         {user.fullName}
                       </td>
@@ -163,10 +206,40 @@ export default function UsersPage() {
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                <div className="text-sm text-gray-600">
+                  Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredUsers.length)} of {filteredUsers.length} users
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-gray-600">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
