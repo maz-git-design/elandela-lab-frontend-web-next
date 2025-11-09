@@ -119,9 +119,17 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-slate-500 mt-6">
-          Advanced laboratory equipment and attendance management
-        </p>
+        <div className="text-center mt-6 space-y-2">
+          <p className="text-xs text-slate-500">
+            Advanced laboratory equipment and attendance management
+          </p>
+          <div className="text-sm text-slate-600">
+            <p className="font-medium mb-1">Need an account?</p>
+            <p className="text-xs">Please contact the admin to sign up:</p>
+            <p className="text-xs">Email: admin@labmanager.com</p>
+            <p className="text-xs">Phone: +27 12 345 6789</p>
+          </div>
+        </div>
       </div>
     </div>
   )
