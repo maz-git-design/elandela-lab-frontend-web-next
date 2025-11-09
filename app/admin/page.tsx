@@ -547,7 +547,7 @@ export default function AdminPage() {
                         </code>
                         <div className="flex gap-1 flex-wrap">
                           {module.available_actions.map((action, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
+                            <Badge key={idx} variant="outline" className="text-xs border-gray-200 text-gray-700">
                               {action}
                             </Badge>
                           ))}
