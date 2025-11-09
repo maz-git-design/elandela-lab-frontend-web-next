@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabase/client'
+import { Mail, Phone } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -116,11 +117,19 @@ export default function LoginPage() {
                 {loading ? 'Signing in...' : 'Sign in'}
               </Button>
 
-              <div className="pt-4 mt-4 border-t border-slate-200 text-center space-y-1">
-                <p className="text-sm font-medium text-slate-700">Need an account?</p>
-                <p className="text-xs text-slate-600">Please contact the admin to sign up:</p>
-                <p className="text-xs text-slate-600">Email: admin@labmanager.com</p>
-                <p className="text-xs text-slate-600">Phone: +27 12 345 6789</p>
+              <div className="pt-4 mt-4 border-t border-slate-200 space-y-3">
+                <p className="text-sm font-medium text-slate-700 text-center">Need an account?</p>
+                <p className="text-xs text-slate-600 text-center">Please contact the admin to sign up:</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-slate-700">
+                    <Mail className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs">admin@labmanager.com</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-slate-700">
+                    <Phone className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs">+27 12 345 6789</span>
+                  </div>
+                </div>
               </div>
             </form>
           </CardContent>
