@@ -48,8 +48,8 @@ export default function LoginPage() {
             <Image
               src="/auth/e-landela-logo-2.png"
               alt="Lab Manager Logo"
-              width={80}
-              height={80}
+              width={120}
+              height={120}
               priority
             />
           </div>
