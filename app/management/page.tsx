@@ -83,7 +83,7 @@ export default function ManagementPage() {
           {stats.map((stat) => {
             const Icon = stat.icon
             return (
-              <Card key={stat.title} className="border-none shadow-sm">
+              <Card key={stat.title} className="border-gray-200 shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600">
                     {stat.title}
@@ -102,7 +102,7 @@ export default function ManagementPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Card className="border-none shadow-sm">
+          <Card className="border-gray-200 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Activities</CardTitle>
@@ -118,7 +118,7 @@ export default function ManagementPage() {
                 {activities.map((activity) => (
                   <div
                     key={activity.id}
-                    className="flex items-start gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-start gap-4 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50">
                       <Activity className="h-5 w-5 text-blue-600" />
@@ -140,7 +140,7 @@ export default function ManagementPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm">
+          <Card className="border-gray-200 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Departments</CardTitle>
@@ -156,7 +156,7 @@ export default function ManagementPage() {
                 {departments.map((dept) => (
                   <div
                     key={dept.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50">
@@ -181,7 +181,7 @@ export default function ManagementPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          <Card className="border-none shadow-sm">
+          <Card className="border-gray-200 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Academic Years</CardTitle>
@@ -194,7 +194,7 @@ export default function ManagementPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                <div className="p-4 border rounded-lg bg-blue-50 border-blue-200">
+                <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-semibold text-gray-900">2024-2025</h4>
@@ -210,7 +210,7 @@ export default function ManagementPage() {
                     </div>
                   </div>
                 </div>
-                <div className="p-4 border rounded-lg hover:bg-gray-50">
+                <div className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-semibold text-gray-900">2023-2024</h4>
@@ -225,7 +225,7 @@ export default function ManagementPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm">
+          <Card className="border-gray-200 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Equipment Categories</CardTitle>
@@ -241,7 +241,7 @@ export default function ManagementPage() {
                 {['Microscopes', 'Centrifuges', 'Spectrophotometers', 'PCR Machines'].map((category, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
                   >
                     <div className="flex items-center gap-3">
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-50">

@@ -12,10 +12,12 @@ import {
   Settings,
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  User as UserIcon
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase/client'
 
 const menuItems = [
   {
@@ -58,6 +60,27 @@ const menuItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
+  const [user, setUser] = useState<{ email: string; full_name?: string } | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (authUser) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', authUser.id)
+          .maybeSingle()
+
+        setUser({
+          email: authUser.email || '',
+          full_name: profile?.full_name,
+        })
+      }
+    }
+    fetchUser()
+  }, [])
 
   return (
     <aside
@@ -108,7 +131,34 @@ export function Sidebar() {
           })}
         </nav>
 
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-gray-200 p-4 space-y-2">
+          {user && (
+            <div className="flex items-center gap-3 px-3 py-2 mb-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 flex-shrink-0">
+                <UserIcon className="h-4 w-4 text-blue-600" />
+              </div>
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {user.full_name || 'User'}
+                  </p>
+                  <p className="text-xs text-gray-600 truncate">
+                    {user.email}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+          <Link
+            href="/settings"
+            className={cn(
+              'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900',
+              pathname === '/settings' ? 'bg-blue-50 text-blue-600' : ''
+            )}
+          >
+            <Settings className="h-5 w-5 flex-shrink-0" />
+            {!collapsed && <span>Settings</span>}
+          </Link>
           <button
             className={cn(
               'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900'
