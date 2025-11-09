@@ -120,7 +120,7 @@ export default function LoginPage() {
               <div className="pt-4 mt-4 border-t border-slate-200 space-y-3">
                 <p className="text-sm font-medium text-slate-700 text-center">Need an account?</p>
                 <p className="text-xs text-slate-600 text-center">Please contact the admin to sign up:</p>
-                <div className="space-y-2">
+                <div className="space-y-2 flex flex-col items-center">
                   <div className="flex items-center gap-2 text-sm text-slate-700">
                     <Mail className="h-4 w-4 text-blue-600" />
                     <span className="text-xs">admin@labmanager.com</span>
