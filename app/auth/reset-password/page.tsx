@@ -69,11 +69,9 @@ export default function ResetPasswordPage() {
                 <div className="p-3 text-sm text-green-600 bg-green-50 border border-green-100 rounded-lg">
                   Password reset link has been sent to your email. Please check your inbox.
                 </div>
-                <Link href="/auth/login">
-                  <Button variant="outline" className="w-full h-10">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Login
-                  </Button>
+                <Link href="/auth/login" className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Login
                 </Link>
               </div>
             ) : (
@@ -106,11 +104,9 @@ export default function ResetPasswordPage() {
                   {loading ? 'Sending...' : 'Send Reset Link'}
                 </Button>
 
-                <Link href="/auth/login">
-                  <Button variant="outline" className="w-full h-10">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Login
-                  </Button>
+                <Link href="/auth/login" className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center">
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Login
                 </Link>
               </form>
             )}
