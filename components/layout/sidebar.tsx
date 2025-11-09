@@ -62,12 +62,12 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 z-40 h-screen border-r bg-white transition-all duration-300',
+        'fixed left-0 top-0 z-40 h-screen border-r border-gray-200 bg-white transition-all duration-300',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
       <div className="flex h-full flex-col">
-        <div className="flex h-16 items-center justify-between border-b px-4">
+        <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
           {!collapsed && (
             <h1 className="text-xl font-bold text-blue-600">
               Lab Manager
@@ -108,7 +108,7 @@ export function Sidebar() {
           })}
         </nav>
 
-        <div className="border-t p-4">
+        <div className="border-t border-gray-200 p-4">
           <button
             className={cn(
               'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900'
