@@ -115,21 +115,20 @@ export default function LoginPage() {
               >
                 {loading ? 'Signing in...' : 'Sign in'}
               </Button>
+
+              <div className="pt-4 mt-4 border-t border-slate-200 text-center space-y-1">
+                <p className="text-sm font-medium text-slate-700">Need an account?</p>
+                <p className="text-xs text-slate-600">Please contact the admin to sign up:</p>
+                <p className="text-xs text-slate-600">Email: admin@labmanager.com</p>
+                <p className="text-xs text-slate-600">Phone: +27 12 345 6789</p>
+              </div>
             </form>
           </CardContent>
         </Card>
 
-        <div className="text-center mt-6 space-y-2">
-          <p className="text-xs text-slate-500">
-            Advanced laboratory equipment and attendance management
-          </p>
-          <div className="text-sm text-slate-600">
-            <p className="font-medium mb-1">Need an account?</p>
-            <p className="text-xs">Please contact the admin to sign up:</p>
-            <p className="text-xs">Email: admin@labmanager.com</p>
-            <p className="text-xs">Phone: +27 12 345 6789</p>
-          </div>
-        </div>
+        <p className="text-center text-xs text-slate-500 mt-6">
+          Advanced laboratory equipment and attendance management
+        </p>
       </div>
     </div>
   )
