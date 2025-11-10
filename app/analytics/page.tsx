@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
   }
 
   const fetchAttendanceStats = async () => {
-    let query = supabase.from('attendance').select('*, profiles(cohort_id), activities(name, cohorts(name))')
+    let query = supabase.from('attendance').select('*, profiles(cohort_id, cohorts(name)), activities(name)')
 
     if (filters.cohort_id !== 'all') {
       query = query.eq('profiles.cohort_id', filters.cohort_id)
@@ -117,6 +117,10 @@ export default function AnalyticsPage() {
 
     const { data, error } = await query
 
+    if (error) {
+      console.error('Error fetching attendance stats:', error)
+    }
+
     if (!error && data) {
       const stats: AttendanceStats = {
         total: data.length,
@@ -132,7 +136,7 @@ export default function AnalyticsPage() {
         stats.byStatus[status] = (stats.byStatus[status] || 0) + 1
 
         // By cohort
-        const cohort = attendance.activities?.cohorts?.name || 'Unknown'
+        const cohort = attendance.profiles?.cohorts?.name || 'Unknown'
         stats.byCohort[cohort] = (stats.byCohort[cohort] || 0) + 1
 
         // By lab/activity
