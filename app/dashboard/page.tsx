@@ -121,7 +121,7 @@ export default function DashboardPage() {
 
     // Recent activities
     const recentAtt = await supabase
-      .from('attendances')
+      .from('attendance')
       .select('*, profiles(first_name, last_name), activities(name)')
       .order('check_in', { ascending: false })
       .limit(5)
