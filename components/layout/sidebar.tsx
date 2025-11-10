@@ -153,6 +153,27 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
         </nav>
 
         <div className="border-t border-gray-200 p-4 space-y-2">
+          {user && (
+            <div className={cn(
+              "flex items-center gap-3 px-3 py-2 mb-2 border-b border-gray-200 pb-3",
+              collapsed ? "justify-center" : ""
+            )}>
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 flex-shrink-0">
+                <UserIcon className="h-4 w-4 text-blue-600" />
+              </div>
+              {!collapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {user.full_name || 'User'}
+                  </p>
+                  <p className="text-xs text-gray-600 truncate">
+                    {user.email}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {bottomMenuItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
@@ -175,22 +196,6 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
               </Link>
             )
           })}
-
-          {user && !collapsed && (
-            <div className="flex items-center gap-3 px-3 py-2 mt-2 mb-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 flex-shrink-0">
-                <UserIcon className="h-4 w-4 text-blue-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.full_name || 'User'}
-                </p>
-                <p className="text-xs text-gray-600 truncate">
-                  {user.email}
-                </p>
-              </div>
-            </div>
-          )}
 
           <button
             onClick={async () => {

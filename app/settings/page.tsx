@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { User, Mail, Lock, Save } from 'lucide-react'
+import { User, Mail, Lock, Save, AlertTriangle } from 'lucide-react'
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false)
@@ -90,6 +90,29 @@ export default function SettingsPage() {
     } catch (error: unknown) {
       setMessage(error instanceof Error ? error.message : 'Failed to update password')
     } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    const confirmation = prompt('This action cannot be undone. Type "DELETE" to confirm:')
+    if (confirmation !== 'DELETE') {
+      setMessage('Account deletion cancelled')
+      return
+    }
+
+    setLoading(true)
+    setMessage('')
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      await supabase.from('profiles').delete().eq('id', user.id)
+      await supabase.auth.signOut()
+      window.location.href = '/auth/login'
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : 'Failed to delete account')
       setLoading(false)
     }
   }
@@ -198,6 +221,37 @@ export default function SettingsPage() {
                 {loading ? 'Updating...' : 'Update Password'}
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <CardTitle className="text-red-900">Danger Zone</CardTitle>
+            </div>
+            <CardDescription className="text-red-700">
+              Irreversible actions that will permanently affect your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-4 bg-white rounded-lg border border-red-200">
+                <h3 className="font-semibold text-gray-900 mb-2">Delete Account</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Once you delete your account, there is no going back. All your data will be permanently removed.
+                </p>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAccount}
+                  disabled={loading}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <AlertTriangle className="h-4 w-4 mr-2" />
+                  Delete My Account
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
