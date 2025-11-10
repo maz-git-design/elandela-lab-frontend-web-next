@@ -252,7 +252,7 @@ export default function ManageReservationsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 pb-8">
+      <div className="space-y-6 mb-8">
         <Breadcrumb items={[
           { label: 'Reservations', href: '/reservations' },
           { label: 'Manage Requests' }
@@ -345,30 +345,26 @@ export default function ManageReservationsPage() {
         </div>
 
         {showCustomDateInputs && (
-          <Card className="border-gray-300">
-            <CardContent className="p-4">
-              <div className="flex gap-4 items-end">
-                <div className="flex-1">
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">From Date</Label>
-                  <Input
-                    type="date"
-                    value={customDateFrom}
-                    onChange={(e) => setCustomDateFrom(e.target.value)}
-                    className="border-gray-300"
-                  />
-                </div>
-                <div className="flex-1">
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">To Date</Label>
-                  <Input
-                    type="date"
-                    value={customDateTo}
-                    onChange={(e) => setCustomDateTo(e.target.value)}
-                    className="border-gray-300"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex gap-4 items-end">
+            <div className="flex-1">
+              <Label className="text-sm font-medium text-gray-700 mb-2 block">From Date</Label>
+              <Input
+                type="date"
+                value={customDateFrom}
+                onChange={(e) => setCustomDateFrom(e.target.value)}
+                className="border-gray-300"
+              />
+            </div>
+            <div className="flex-1">
+              <Label className="text-sm font-medium text-gray-700 mb-2 block">To Date</Label>
+              <Input
+                type="date"
+                value={customDateTo}
+                onChange={(e) => setCustomDateTo(e.target.value)}
+                className="border-gray-300"
+              />
+            </div>
+          </div>
         )}
 
         <div className="text-sm text-gray-600">
@@ -381,7 +377,7 @@ export default function ManageReservationsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-12 gap-6 h-[calc(100vh-300px)]">
-            <div className="col-span-5 space-y-3 h-full overflow-y-auto pr-2">
+            <div className="col-span-5 space-y-3 h-full overflow-y-auto pr-4">
               {filteredReservations.length === 0 ? (
                 <Card className="border-gray-300">
                   <CardContent className="py-12">
