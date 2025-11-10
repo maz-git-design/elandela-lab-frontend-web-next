@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, Clock, Search, ChevronLeft, ChevronRight, Edit, Trash2, CheckSquare, UserPlus } from 'lucide-react'
+import { Calendar, Clock, Search, ChevronLeft, ChevronRight, Edit, Trash2, CheckSquare, UserPlus, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -293,6 +293,15 @@ export default function ReservationsPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => router.push('/reservations/manage')}
+                                className="border-gray-300"
+                                title="Manage reservation workflow"
+                              >
+                                <Settings className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => {
                                   setEditingReservation(reservation)
                                   setReservationForm({
@@ -305,6 +314,7 @@ export default function ReservationsPage() {
                                   })
                                   setShowDialog(true)
                                 }}
+                                className="border-gray-300"
                               >
                                 <Edit className="w-3 h-3" />
                               </Button>
@@ -312,7 +322,7 @@ export default function ReservationsPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleDeleteReservation(reservation.id)}
-                                className="text-red-600 hover:text-red-700"
+                                className="text-red-600 hover:text-red-700 border-gray-300"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </Button>

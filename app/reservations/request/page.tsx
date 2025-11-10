@@ -8,11 +8,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { AlertCircle, CheckCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
-interface Activity {
+interface Lab {
   id: string
   name: string
   description: string
@@ -26,7 +27,7 @@ interface Equipment {
 }
 
 interface AvailabilityCheck {
-  activityAvailable: boolean
+  labAvailable: boolean
   unavailableEquipment: string[]
   conflictingReservations: number
 }
@@ -35,14 +36,15 @@ export default function RequestReservationPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [activities, setActivities] = useState<Activity[]>([])
-  const [equipment, setEquipment] = useState<Equipment[]>([])
+  const [labs, setLabs] = useState<Lab[]>([])
+  const [filteredEquipment, setFilteredEquipment] = useState<Equipment[]>([])
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
   const [availability, setAvailability] = useState<AvailabilityCheck | null>(null)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
 
   const [formData, setFormData] = useState({
-    activityId: '',
+    labId: '',
+    activityName: '',
     desiredStartTime: '',
     desiredEndTime: '',
     motivation: '',
@@ -55,20 +57,39 @@ export default function RequestReservationPage() {
     fetchData()
   }, [])
 
+  useEffect(() => {
+    if (formData.labId) {
+      fetchEquipmentForLab(formData.labId)
+      setSelectedEquipment([])
+    } else {
+      setFilteredEquipment([])
+    }
+  }, [formData.labId])
+
   async function fetchData() {
     setLoading(true)
-    const [activitiesRes, equipmentRes] = await Promise.all([
-      supabase.from('activities').select('id, name, description').order('name'),
-      supabase.from('equipment').select('id, name, code, status').order('name')
-    ])
+    const labsRes = await supabase.from('activities').select('id, name, description').eq('activity_type', 'lab_session').order('name')
 
-    if (activitiesRes.data) setActivities(activitiesRes.data)
-    if (equipmentRes.data) setEquipment(equipmentRes.data.filter(e => e.status === 'available' || e.status === 'operational'))
+    if (labsRes.data) setLabs(labsRes.data)
     setLoading(false)
   }
 
+  async function fetchEquipmentForLab(labId: string) {
+    const { data } = await supabase
+      .from('lab_equipment')
+      .select('equipment_id, equipment(id, name, code, status)')
+      .eq('lab_id', labId)
+
+    if (data) {
+      const equipmentList = data
+        .map(le => (le.equipment as unknown as Equipment))
+        .filter(e => e && (e.status === 'available' || e.status === 'operational'))
+      setFilteredEquipment(equipmentList)
+    }
+  }
+
   async function checkAvailability() {
-    if (!formData.activityId || !formData.desiredStartTime || !formData.desiredEndTime) {
+    if (!formData.labId || !formData.desiredStartTime || !formData.desiredEndTime) {
       return
     }
 
@@ -76,7 +97,7 @@ export default function RequestReservationPage() {
 
     const { data: conflicts } = await supabase
       .from('reservations')
-      .select('id, reservation_equipment(equipment_id)')
+      .select('id, reservation_equipment(equipment_id), reservation_activities(activity_id)')
       .or(`status.eq.approved,status.eq.confirmed`)
       .gte('desired_end_time', formData.desiredStartTime)
       .lte('desired_start_time', formData.desiredEndTime)
@@ -95,12 +116,12 @@ export default function RequestReservationPage() {
     )
 
     const unavailableNames = unavailableEquipment.map(eqId => {
-      const eq = equipment.find(e => e.id === eqId)
+      const eq = filteredEquipment.find(e => e.id === eqId)
       return eq?.name || 'Unknown'
     })
 
     setAvailability({
-      activityAvailable: true,
+      labAvailable: true,
       unavailableEquipment: unavailableNames,
       conflictingReservations: conflicts?.length || 0
     })
@@ -109,20 +130,24 @@ export default function RequestReservationPage() {
   }
 
   useEffect(() => {
-    if (formData.activityId && formData.desiredStartTime && formData.desiredEndTime && selectedEquipment.length > 0) {
+    if (formData.labId && formData.desiredStartTime && formData.desiredEndTime && selectedEquipment.length > 0) {
       const debounce = setTimeout(() => {
         checkAvailability()
       }, 500)
       return () => clearTimeout(debounce)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.activityId, formData.desiredStartTime, formData.desiredEndTime, selectedEquipment])
+  }, [formData.labId, formData.desiredStartTime, formData.desiredEndTime, selectedEquipment])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
 
     if (!formData.motivation.trim()) {
       alert('Please provide a motivation for your reservation')
+      return
+    }
+
+    if (!formData.activityName.trim()) {
+      alert('Please enter an activity name')
       return
     }
 
@@ -155,10 +180,10 @@ export default function RequestReservationPage() {
 
       if (reservationError) throw reservationError
 
-      if (formData.activityId) {
+      if (formData.labId) {
         await supabase.from('reservation_activities').insert({
           reservation_id: reservation.id,
-          activity_id: formData.activityId
+          activity_id: formData.labId
         })
       }
 
@@ -170,6 +195,12 @@ export default function RequestReservationPage() {
           }))
         )
       }
+
+      await supabase.from('reservation_comments').insert({
+        reservation_id: reservation.id,
+        commenter_id: user.id,
+        comment_text: `Activity: ${formData.activityName}`
+      })
 
       await supabase.from('reservation_history').insert({
         reservation_id: reservation.id,
@@ -200,6 +231,11 @@ export default function RequestReservationPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
+        <Breadcrumb items={[
+          { label: 'Reservations', href: '/reservations' },
+          { label: 'Request Reservation' }
+        ]} />
+
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Request Reservation</h2>
           <p className="text-sm text-gray-600">Submit a new lab and equipment reservation request</p>
@@ -211,7 +247,7 @@ export default function RequestReservationPage() {
           </div>
         ) : (
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="border-gray-200">
+          <Card className="border-gray-300">
             <CardHeader>
               <CardTitle>Reservation Details</CardTitle>
               <CardDescription>Provide information about your reservation</CardDescription>
@@ -219,22 +255,35 @@ export default function RequestReservationPage() {
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="activity">Lab/Activity *</Label>
+                  <Label htmlFor="lab">Lab *</Label>
                   <Select
-                    value={formData.activityId}
-                    onValueChange={(value) => setFormData({ ...formData, activityId: value })}
+                    value={formData.labId}
+                    onValueChange={(value) => setFormData({ ...formData, labId: value })}
                   >
-                    <SelectTrigger id="activity">
-                      <SelectValue placeholder="Select lab or activity" />
+                    <SelectTrigger id="lab" className="border-gray-300">
+                      <SelectValue placeholder="Select lab" />
                     </SelectTrigger>
                     <SelectContent>
-                      {activities.map(activity => (
-                        <SelectItem key={activity.id} value={activity.id}>
-                          {activity.name}
+                      {labs.map(lab => (
+                        <SelectItem key={lab.id} value={lab.id}>
+                          {lab.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="activity">Activity Name *</Label>
+                  <Input
+                    id="activity"
+                    type="text"
+                    placeholder="e.g., Circuit Testing, Research Experiment"
+                    value={formData.activityName}
+                    onChange={(e) => setFormData({ ...formData, activityName: e.target.value })}
+                    className="border-gray-300"
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -243,7 +292,7 @@ export default function RequestReservationPage() {
                     value={formData.reservationType}
                     onValueChange={(value) => setFormData({ ...formData, reservationType: value })}
                   >
-                    <SelectTrigger id="reservationType">
+                    <SelectTrigger id="reservationType" className="border-gray-300">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -261,6 +310,7 @@ export default function RequestReservationPage() {
                     type="datetime-local"
                     value={formData.desiredStartTime}
                     onChange={(e) => setFormData({ ...formData, desiredStartTime: e.target.value })}
+                    className="border-gray-300"
                     required
                   />
                 </div>
@@ -272,6 +322,7 @@ export default function RequestReservationPage() {
                     type="datetime-local"
                     value={formData.desiredEndTime}
                     onChange={(e) => setFormData({ ...formData, desiredEndTime: e.target.value })}
+                    className="border-gray-300"
                     required
                   />
                 </div>
@@ -282,7 +333,7 @@ export default function RequestReservationPage() {
                     value={formData.priority}
                     onValueChange={(value) => setFormData({ ...formData, priority: value })}
                   >
-                    <SelectTrigger id="priority">
+                    <SelectTrigger id="priority" className="border-gray-300">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -300,7 +351,7 @@ export default function RequestReservationPage() {
                     value={formData.requesterRole}
                     onValueChange={(value) => setFormData({ ...formData, requesterRole: value })}
                   >
-                    <SelectTrigger id="role">
+                    <SelectTrigger id="role" className="border-gray-300">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -316,7 +367,7 @@ export default function RequestReservationPage() {
                 <Label htmlFor="motivation">Motivation / Purpose *</Label>
                 <textarea
                   id="motivation"
-                  className="w-full min-h-[100px] p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full min-h-[100px] p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Explain why you need this reservation..."
                   value={formData.motivation}
                   onChange={(e) => setFormData({ ...formData, motivation: e.target.value })}
@@ -326,43 +377,55 @@ export default function RequestReservationPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-gray-200">
-            <CardHeader>
-              <CardTitle>Equipment Selection</CardTitle>
-              <CardDescription>Select the equipment you need (optional)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                {equipment.map(item => (
-                  <div
-                    key={item.id}
-                    onClick={() => toggleEquipment(item.id)}
-                    className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                      selectedEquipment.includes(item.id)
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="font-medium text-sm">{item.name}</div>
-                        <div className="text-xs text-gray-500">{item.code}</div>
-                      </div>
-                      {selectedEquipment.includes(item.id) && (
-                        <CheckCircle className="w-5 h-5 text-blue-600" />
-                      )}
+          {formData.labId && (
+            <Card className="border-gray-300">
+              <CardHeader>
+                <CardTitle>Equipment Selection</CardTitle>
+                <CardDescription>
+                  {filteredEquipment.length > 0
+                    ? `Select equipment available in ${labs.find(l => l.id === formData.labId)?.name}`
+                    : 'No equipment available for this lab'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {filteredEquipment.length > 0 ? (
+                  <>
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                      {filteredEquipment.map(item => (
+                        <div
+                          key={item.id}
+                          onClick={() => toggleEquipment(item.id)}
+                          className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                            selectedEquipment.includes(item.id)
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-300 hover:border-gray-400'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-sm">{item.name}</div>
+                              <div className="text-xs text-gray-500">{item.code}</div>
+                            </div>
+                            {selectedEquipment.includes(item.id) && (
+                              <CheckCircle className="w-5 h-5 text-blue-600" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 text-sm text-gray-600">
-                {selectedEquipment.length} equipment item(s) selected
-              </div>
-            </CardContent>
-          </Card>
+                    <div className="mt-4 text-sm text-gray-600">
+                      {selectedEquipment.length} equipment item(s) selected
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500">Select a lab first to see available equipment</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {checkingAvailability && (
-            <Card className="border-gray-200">
+            <Card className="border-gray-300">
               <CardContent className="py-6">
                 <div className="flex items-center justify-center gap-3">
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
@@ -425,10 +488,11 @@ export default function RequestReservationPage() {
               variant="outline"
               onClick={() => router.push('/reservations')}
               disabled={submitting}
+              className="border-gray-300"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting || !formData.motivation.trim()}>
+            <Button type="submit" disabled={submitting || !formData.motivation.trim() || !formData.activityName.trim()}>
               {submitting ? 'Submitting...' : 'Submit Request'}
             </Button>
           </div>
