@@ -20,8 +20,14 @@ interface Attendance {
   check_out?: string
   type: 'manual' | 'face' | 'qr'
   status: 'present' | 'late' | 'absent'
-  user?: {
+  notes?: string
+  profiles?: {
     full_name: string
+    email: string
+  }
+  activities?: {
+    name: string
+    activity_type: string
   }
 }
 
@@ -85,7 +91,8 @@ export default function AttendancesPage() {
       .from('attendance')
       .select(`
         *,
-        user:profiles(full_name)
+        profiles:user_id(full_name, email),
+        activities:activity_id(name, activity_type)
       `)
       .order('check_in', { ascending: false })
 
@@ -183,10 +190,11 @@ export default function AttendancesPage() {
 
   const filteredAttendances = attendances.filter(attendance => {
     const searchLower = searchTerm.toLowerCase()
-    const userName = attendance.user?.full_name || ''
+    const userName = attendance.profiles?.full_name || ''
+    const activityName = attendance.activities?.name || ''
     const matchesSearch = (
       userName.toLowerCase().includes(searchLower) ||
-      (attendance.activity_id || '').toLowerCase().includes(searchLower) ||
+      activityName.toLowerCase().includes(searchLower) ||
       attendance.type.toLowerCase().includes(searchLower) ||
       attendance.status.toLowerCase().includes(searchLower)
     )
@@ -398,7 +406,7 @@ export default function AttendancesPage() {
                   setStatusFilter(value)
                   setCurrentPage(1)
                 }}>
-                  <SelectTrigger className="w-40 border-gray-200">
+                  <SelectTrigger className="w-40 border-gray-300">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -428,13 +436,13 @@ export default function AttendancesPage() {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 border-b border-gray-200">User</th>
-                    <th className="px-6 py-3 border-b border-gray-200">Activity</th>
-                    <th className="px-6 py-3 border-b border-gray-200">Check In</th>
-                    <th className="px-6 py-3 border-b border-gray-200">Check Out</th>
-                    <th className="px-6 py-3 border-b border-gray-200">Type</th>
-                    <th className="px-6 py-3 border-b border-gray-200">Status</th>
-                    <th className="px-6 py-3 border-b border-gray-200">Actions</th>
+                    <th className="px-6 py-3 border-b border-gray-300">User</th>
+                    <th className="px-6 py-3 border-b border-gray-300">Lab/Activity</th>
+                    <th className="px-6 py-3 border-b border-gray-300">Check In</th>
+                    <th className="px-6 py-3 border-b border-gray-300">Check Out</th>
+                    <th className="px-6 py-3 border-b border-gray-300">Type</th>
+                    <th className="px-6 py-3 border-b border-gray-300">Status</th>
+                    <th className="px-6 py-3 border-b border-gray-300">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -446,11 +454,13 @@ export default function AttendancesPage() {
                     </tr>
                   ) : (
                     paginatedAttendances.map((attendance) => (
-                      <tr key={attendance.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
+                      <tr key={attendance.id} className="bg-white border-b border-gray-300 hover:bg-gray-50">
                         <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                          {attendance.user?.full_name || 'Unknown User'}
+                          {attendance.profiles?.full_name || 'Unknown User'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">{attendance.activity_id || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {attendance.activities?.name || '-'}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">{new Date(attendance.check_in).toLocaleString()}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{attendance.check_out ? new Date(attendance.check_out).toLocaleString() : '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap">

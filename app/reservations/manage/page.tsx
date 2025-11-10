@@ -35,6 +35,7 @@ interface Reservation {
 
 export default function ManageReservationsPage() {
   const [reservations, setReservations] = useState<Reservation[]>([])
+  const [labs, setLabs] = useState<{id: string; name: string}[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [showDialog, setShowDialog] = useState(false)
@@ -49,15 +50,30 @@ export default function ManageReservationsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [labFilter, setLabFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
   useEffect(() => {
-    fetchReservations()
+    fetchData()
   }, [])
 
-  async function fetchReservations() {
+  async function fetchData() {
     setLoading(true)
+    await Promise.all([fetchReservations(), fetchLabs()])
+    setLoading(false)
+  }
+
+  async function fetchLabs() {
+    const { data } = await supabase
+      .from('activities')
+      .select('id, name')
+      .eq('activity_type', 'lab_session')
+      .order('name')
+    if (data) setLabs(data)
+  }
+
+  async function fetchReservations() {
     const { data } = await supabase
       .from('reservations')
       .select(`
@@ -70,7 +86,6 @@ export default function ManageReservationsPage() {
       .order('requested_at', { ascending: false })
 
     if (data) setReservations(data as Reservation[])
-    setLoading(false)
   }
 
   async function handleAction() {
@@ -173,7 +188,14 @@ export default function ManageReservationsPage() {
     const matchesPriority = priorityFilter === 'all' || reservation.priority === priorityFilter
     const matchesStatus = statusFilter === 'all' || reservation.status === statusFilter
 
-    return matchesSearch && matchesPriority && matchesStatus
+    let matchesLab = labFilter === 'all'
+    if (!matchesLab && reservation.reservation_activities && reservation.reservation_activities.length > 0) {
+      const labName = reservation.reservation_activities[0].activities.name
+      const selectedLab = labs.find(lab => lab.id === labFilter)
+      matchesLab = selectedLab ? selectedLab.name === labName : false
+    }
+
+    return matchesSearch && matchesPriority && matchesStatus && matchesLab
   })
 
   const totalPages = Math.ceil(filteredReservations.length / itemsPerPage)
@@ -184,7 +206,7 @@ export default function ManageReservationsPage() {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, priorityFilter, statusFilter])
+  }, [searchTerm, priorityFilter, statusFilter, labFilter])
 
   return (
     <DashboardLayout>
@@ -213,6 +235,17 @@ export default function ManageReservationsPage() {
                   />
                 </div>
               </div>
+              <Select value={labFilter} onValueChange={setLabFilter}>
+                <SelectTrigger className="w-full md:w-40 border-gray-300">
+                  <SelectValue placeholder="Lab" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Labs</SelectItem>
+                  {labs.map(lab => (
+                    <SelectItem key={lab.id} value={lab.id}>{lab.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                 <SelectTrigger className="w-full md:w-40 border-gray-300">
                   <SelectValue placeholder="Priority" />

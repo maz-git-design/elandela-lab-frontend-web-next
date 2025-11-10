@@ -253,7 +253,7 @@ export default function RequestReservationPage() {
               <CardDescription>Provide information about your reservation</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="lab">Lab *</Label>
                   <Select

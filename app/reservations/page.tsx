@@ -30,9 +30,11 @@ interface Reservation {
 export default function ReservationsPage() {
   const router = useRouter()
   const [reservations, setReservations] = useState<Reservation[]>([])
+  const [labs, setLabs] = useState<{id: string; name: string}[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [labFilter, setLabFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
 
   const itemsPerPage = 10
@@ -44,8 +46,17 @@ export default function ReservationsPage() {
 
   async function fetchData() {
     setLoading(true)
-    await fetchReservations()
+    await Promise.all([fetchReservations(), fetchLabs()])
     setLoading(false)
+  }
+
+  async function fetchLabs() {
+    const { data } = await supabase
+      .from('activities')
+      .select('id, name')
+      .eq('activity_type', 'lab_session')
+      .order('name')
+    if (data) setLabs(data)
   }
 
   async function fetchReservations() {
@@ -91,7 +102,15 @@ export default function ReservationsPage() {
       r.motivation?.toLowerCase().includes(searchTerm.toLowerCase())
     )
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter
-    return matchesSearch && matchesStatus
+
+    let matchesLab = labFilter === 'all'
+    if (!matchesLab && r.reservation_activities && r.reservation_activities.length > 0) {
+      const labName = r.reservation_activities[0].activities.name
+      const selectedLab = labs.find(lab => lab.id === labFilter)
+      matchesLab = selectedLab ? selectedLab.name === labName : false
+    }
+
+    return matchesSearch && matchesStatus && matchesLab
   })
 
   const totalPages = Math.ceil(filteredReservations.length / itemsPerPage)
@@ -167,11 +186,25 @@ export default function ReservationsPage() {
                 <CardDescription>View and manage equipment bookings</CardDescription>
               </div>
               <div className="flex gap-2">
+                <Select value={labFilter} onValueChange={(value) => {
+                  setLabFilter(value)
+                  setCurrentPage(1)
+                }}>
+                  <SelectTrigger className="w-40 border-gray-300">
+                    <SelectValue placeholder="Filter by lab" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Labs</SelectItem>
+                    {labs.map(lab => (
+                      <SelectItem key={lab.id} value={lab.id}>{lab.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Select value={statusFilter} onValueChange={(value) => {
                   setStatusFilter(value)
                   setCurrentPage(1)
                 }}>
-                  <SelectTrigger className="w-40 border-gray-200">
+                  <SelectTrigger className="w-40 border-gray-300">
                     <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
                   <SelectContent>
