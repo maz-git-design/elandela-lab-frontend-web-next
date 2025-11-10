@@ -36,6 +36,12 @@ interface User {
   full_name: string
 }
 
+interface Activity {
+  id: string
+  name: string
+  activity_type: string
+}
+
 function getStatusColor(status: string) {
   switch (status) {
     case 'present':
@@ -65,6 +71,7 @@ function getTypeIcon(type: string) {
 export default function AttendancesPage() {
   const [attendances, setAttendances] = useState<Attendance[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const [activities, setActivities] = useState<Activity[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
@@ -78,12 +85,14 @@ export default function AttendancesPage() {
     check_in: new Date().toISOString(),
     check_out: '',
     type: 'manual' as 'manual' | 'face' | 'qr',
-    status: 'present' as 'present' | 'late' | 'absent'
+    status: 'present' as 'present' | 'late' | 'absent',
+    notes: ''
   })
 
   useEffect(() => {
     fetchAttendances()
     fetchUsers()
+    fetchActivities()
   }, [])
 
   const fetchAttendances = async () => {
@@ -116,6 +125,21 @@ export default function AttendancesPage() {
     }
 
     setUsers(data || [])
+  }
+
+  const fetchActivities = async () => {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('id, name, activity_type')
+      .eq('activity_type', 'lab_session')
+      .order('name')
+
+    if (error) {
+      console.error('Error fetching activities:', error)
+      return
+    }
+
+    setActivities(data || [])
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -156,7 +180,8 @@ export default function AttendancesPage() {
       check_in: attendance.check_in,
       check_out: attendance.check_out || '',
       type: attendance.type,
-      status: attendance.status
+      status: attendance.status,
+      notes: attendance.notes || ''
     })
     setIsDialogOpen(true)
   }
@@ -184,7 +209,8 @@ export default function AttendancesPage() {
       check_in: new Date().toISOString(),
       check_out: '',
       type: 'manual',
-      status: 'present'
+      status: 'present',
+      notes: ''
     })
   }
 
@@ -263,14 +289,22 @@ export default function AttendancesPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="activity_id">Activity ID</Label>
-                    <Input
-                      id="activity_id"
+                    <Label htmlFor="activity_id">Lab/Activity</Label>
+                    <Select
                       value={formData.activity_id}
-                      onChange={(e) => setFormData({ ...formData, activity_id: e.target.value })}
-                      placeholder="Enter activity ID"
-                      required
-                    />
+                      onValueChange={(value) => setFormData({ ...formData, activity_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select lab or activity" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activities.map((activity) => (
+                          <SelectItem key={activity.id} value={activity.id}>
+                            {activity.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -328,6 +362,17 @@ export default function AttendancesPage() {
                         <SelectItem value="absent">Absent</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="notes">Notes (Optional)</Label>
+                    <textarea
+                      id="notes"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Add any additional notes..."
+                      className="w-full min-h-[80px] p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
                   </div>
                 </div>
                 <DialogFooter>
