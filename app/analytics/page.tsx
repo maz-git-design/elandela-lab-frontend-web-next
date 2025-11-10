@@ -335,7 +335,7 @@ export default function AnalyticsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Cohort</label>
                 <Select value={filters.cohort_id} onValueChange={(value) => setFilters({ ...filters, cohort_id: value })}>
@@ -346,6 +346,21 @@ export default function AnalyticsPage() {
                     <SelectItem value="all">All Cohorts</SelectItem>
                     {filterOptions.cohorts.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Department</label>
+                <Select value={filters.department_id} onValueChange={(value) => setFilters({ ...filters, department_id: value })}>
+                  <SelectTrigger className="border-gray-200">
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {filterOptions.departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

@@ -60,6 +60,7 @@ export default function AttendancesPage() {
   const [attendances, setAttendances] = useState<Attendance[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null)
@@ -183,17 +184,26 @@ export default function AttendancesPage() {
   const filteredAttendances = attendances.filter(attendance => {
     const searchLower = searchTerm.toLowerCase()
     const userName = attendance.user?.full_name || ''
-    return (
+    const matchesSearch = (
       userName.toLowerCase().includes(searchLower) ||
       (attendance.activity_id || '').toLowerCase().includes(searchLower) ||
       attendance.type.toLowerCase().includes(searchLower) ||
       attendance.status.toLowerCase().includes(searchLower)
     )
+    const matchesStatus = statusFilter === 'all' || attendance.status === statusFilter
+    return matchesSearch && matchesStatus
   })
 
   const totalPages = Math.ceil(filteredAttendances.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedAttendances = filteredAttendances.slice(startIndex, startIndex + itemsPerPage)
+
+  const stats = {
+    total: attendances.length,
+    present: attendances.filter(a => a.status === 'present').length,
+    late: attendances.filter(a => a.status === 'late').length,
+    absent: attendances.filter(a => a.status === 'absent').length
+  }
 
   return (
     <DashboardLayout>
@@ -322,68 +332,94 @@ export default function AttendancesPage() {
           </Dialog>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="border-gray-200">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Manual Check-in</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Total Attendances</CardTitle>
               <div className="bg-blue-50 text-blue-600 rounded-lg p-2">
-                <Hand className="h-5 w-5" />
+                <UserCheck className="h-5 w-5" />
               </div>
             </CardHeader>
             <CardContent>
-              <CardDescription>
-                Traditional manual attendance marking by instructor
-              </CardDescription>
+              <div className="text-2xl font-bold">{stats.total}</div>
+              <p className="text-xs text-gray-600 mt-1">All records</p>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <Card className="border-gray-200">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Face Recognition</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Present</CardTitle>
               <div className="bg-green-50 text-green-600 rounded-lg p-2">
-                <Camera className="h-5 w-5" />
+                <UserCheck className="h-5 w-5" />
               </div>
             </CardHeader>
             <CardContent>
-              <CardDescription>
-                Automated attendance using facial recognition technology
-              </CardDescription>
+              <div className="text-2xl font-bold">{stats.present}</div>
+              <p className="text-xs text-gray-600 mt-1">On time</p>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <Card className="border-gray-200">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">QR Code Scan</CardTitle>
-              <div className="bg-gray-50 text-gray-600 rounded-lg p-2">
-                <QrCode className="h-5 w-5" />
+              <CardTitle className="text-sm font-medium text-gray-600">Late</CardTitle>
+              <div className="bg-yellow-50 text-yellow-600 rounded-lg p-2">
+                <UserCheck className="h-5 w-5" />
               </div>
             </CardHeader>
             <CardContent>
-              <CardDescription>
-                Quick attendance marking using QR code scanning
-              </CardDescription>
+              <div className="text-2xl font-bold">{stats.late}</div>
+              <p className="text-xs text-gray-600 mt-1">Arrived late</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Absent</CardTitle>
+              <div className="bg-red-50 text-red-600 rounded-lg p-2">
+                <UserCheck className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.absent}</div>
+              <p className="text-xs text-gray-600 mt-1">Did not attend</p>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="border-none shadow-sm">
+        <Card className="border-gray-200">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Attendance Records</CardTitle>
                 <CardDescription>Recent attendance entries</CardDescription>
               </div>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search attendances..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="pl-9"
-                />
+              <div className="flex gap-2">
+                <Select value={statusFilter} onValueChange={(value) => {
+                  setStatusFilter(value)
+                  setCurrentPage(1)
+                }}>
+                  <SelectTrigger className="w-40 border-gray-200">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="present">Present</SelectItem>
+                    <SelectItem value="late">Late</SelectItem>
+                    <SelectItem value="absent">Absent</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search attendances..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="pl-9"
+                  />
+                </div>
               </div>
             </div>
           </CardHeader>

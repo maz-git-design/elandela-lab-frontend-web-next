@@ -324,6 +324,62 @@ export default function LabsPage() {
           <p className="text-gray-600 mt-1">Manage laboratory facilities and equipment inventory</p>
         </div>
 
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Labs</CardTitle>
+              <div className="bg-blue-50 text-blue-600 rounded-lg p-2">
+                <Microscope className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{labs.length}</div>
+              <p className="text-xs text-gray-600 mt-1">Active lab facilities</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Total Equipment</CardTitle>
+              <div className="bg-green-50 text-green-600 rounded-lg p-2">
+                <Package className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{equipment.length}</div>
+              <p className="text-xs text-gray-600 mt-1">Equipment items</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Equipment Categories</CardTitle>
+              <div className="bg-purple-50 text-purple-600 rounded-lg p-2">
+                <Wrench className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{categories.length}</div>
+              <p className="text-xs text-gray-600 mt-1">Different categories</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600">Available Equipment</CardTitle>
+              <div className="bg-teal-50 text-teal-600 rounded-lg p-2">
+                <Package className="h-5 w-5" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {equipment.filter(e => e.current_status === 'available').length}
+              </div>
+              <p className="text-xs text-gray-600 mt-1">Ready to use</p>
+            </CardContent>
+          </Card>
+        </div>
+
         <Tabs defaultValue="labs" className="space-y-6">
           <TabsList className="bg-gray-100">
             <TabsTrigger value="labs" className="gap-2">
