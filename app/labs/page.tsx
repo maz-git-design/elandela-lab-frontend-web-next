@@ -395,54 +395,68 @@ export default function LabsPage() {
                   <>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {paginatedLabs.map(lab => (
-                      <div key={lab.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <Microscope className="w-5 h-5 text-blue-600" />
+                      <div key={lab.id} className="group bg-white rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 overflow-hidden">
+                        <div className="p-5">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-sm">
+                                <Microscope className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-gray-900 text-lg truncate" title={lab.name}>
+                                  {lab.name}
+                                </h4>
+                                {lab.code && (
+                                  <code className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-mono">
+                                    {lab.code}
+                                  </code>
+                                )}
+                              </div>
+                            </div>
+                            <Badge className={getLabStatusColor(lab.lab_status)}>
+                              {lab.lab_status || 'active'}
+                            </Badge>
                           </div>
-                          <Badge className={getLabStatusColor(lab.lab_status)}>
-                            {lab.lab_status || 'active'}
-                          </Badge>
+
+                          <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5rem]">
+                            {lab.description || 'No description available'}
+                          </p>
+
+                          <div className="space-y-2 mb-4">
+                            {lab.building && (
+                              <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                                <span>{lab.building}, Room {lab.room_number}, Floor {lab.floor}</span>
+                              </div>
+                            )}
+                            {lab.capacity_users && (
+                              <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <Users className="w-3.5 h-3.5 text-gray-400" />
+                                <span>Capacity: {lab.capacity_users} users</span>
+                              </div>
+                            )}
+                            {lab.departments && (
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <span className="w-3.5 h-3.5 inline-block"></span>
+                                <span>Dept: {lab.departments.name}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <h4 className="font-semibold text-gray-900 mb-1 truncate" title={lab.name}>{lab.name}</h4>
-                        {lab.code && (
-                          <code className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-700 block mb-2">
-                            {lab.code}
-                          </code>
-                        )}
-                        <p className="text-sm text-gray-600 mb-3">{lab.description || 'No description'}</p>
-                        <div className="space-y-1 text-xs text-gray-600 mb-3">
-                          {lab.building && (
-                            <div className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {lab.building}, Room {lab.room_number}, Floor {lab.floor}
-                            </div>
-                          )}
-                          {lab.capacity_users && (
-                            <div className="flex items-center gap-1">
-                              <Users className="w-3 h-3" />
-                              Capacity: {lab.capacity_users} users
-                            </div>
-                          )}
-                          {lab.departments && (
-                            <div className="text-xs text-gray-500">
-                              Dept: {lab.departments.name}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <Link href="/labs/manage" className="flex-1">
+
+                        <div className="bg-gray-50 px-5 py-3 flex gap-2 border-t border-gray-100">
+                          <Link href="/labs/manage">
                             <Button
                               variant="default"
                               size="sm"
-                              className="w-full"
+                              className="w-24"
                             >
-                              <Package className="w-3 h-3 mr-1" />
+                              <Package className="w-3.5 h-3.5 mr-1.5" />
                               Manage
                             </Button>
                           </Link>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => {
                               setEditingLab(lab)
@@ -460,16 +474,17 @@ export default function LabsPage() {
                               })
                               setShowLabDialog(true)
                             }}
+                            className="hover:bg-gray-200"
                           >
-                            <Edit className="w-3 h-3" />
+                            <Edit className="w-3.5 h-3.5" />
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteLab(lab.id)}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </div>

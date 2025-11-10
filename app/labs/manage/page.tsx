@@ -258,17 +258,16 @@ export default function LabManagementPage() {
                 />
               </div>
 
-              <div className="border rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-gray-50 border-b">
+              <div className="relative overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left font-medium text-gray-700">Name</th>
-                        <th className="px-6 py-3 text-left font-medium text-gray-700">Code</th>
-                        <th className="px-6 py-3 text-left font-medium text-gray-700">Serial</th>
-                        <th className="px-6 py-3 text-left font-medium text-gray-700">Category</th>
-                        <th className="px-6 py-3 text-left font-medium text-gray-700">Status</th>
-                        <th className="px-6 py-3 text-left font-medium text-gray-700">Actions</th>
+                        <th className="px-6 py-3 border-b border-gray-200">Name</th>
+                        <th className="px-6 py-3 border-b border-gray-200">Code</th>
+                        <th className="px-6 py-3 border-b border-gray-200">Serial</th>
+                        <th className="px-6 py-3 border-b border-gray-200">Category</th>
+                        <th className="px-6 py-3 border-b border-gray-200">Status</th>
+                        <th className="px-6 py-3 border-b border-gray-200">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -280,7 +279,7 @@ export default function LabManagementPage() {
                         </tr>
                       ) : (
                         filteredEquipment.map((item) => (
-                          <tr key={item.id} className="border-b hover:bg-gray-50">
+                          <tr key={item.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
                             <td className="px-6 py-4 whitespace-nowrap font-medium">{item.name}</td>
                             <td className="px-6 py-4 whitespace-nowrap">{item.code}</td>
                             <td className="px-6 py-4 whitespace-nowrap">{item.serial_number || '-'}</td>
@@ -329,7 +328,6 @@ export default function LabManagementPage() {
                       )}
                     </tbody>
                   </table>
-                </div>
               </div>
             </CardContent>
           </Card>
