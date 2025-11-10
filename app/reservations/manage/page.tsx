@@ -295,8 +295,8 @@ export default function ManageReservationsPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-12 gap-6">
-            <div className="col-span-5 space-y-3 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+          <div className="grid grid-cols-12 gap-6 h-[calc(100vh-300px)]">
+            <div className="col-span-5 space-y-3 h-full overflow-y-auto pr-2">
               {filteredReservations.length === 0 ? (
                 <Card className="border-gray-300">
                   <CardContent className="py-12">
@@ -354,10 +354,10 @@ export default function ManageReservationsPage() {
               )}
             </div>
 
-            <div className="col-span-7">
+            <div className="col-span-7 h-full">
               {selectedReservation ? (
-                <Card className="border-gray-300">
-                  <CardContent className="p-6">
+                <Card className="border-gray-300 h-full flex flex-col">
+                  <CardContent className="p-6 overflow-y-auto flex-1">
                     <div className="space-y-6">
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-4">
@@ -501,8 +501,8 @@ export default function ManageReservationsPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="border-gray-300">
-                  <CardContent className="py-12">
+                <Card className="border-gray-300 h-full flex flex-col">
+                  <CardContent className="py-12 flex-1 flex items-center justify-center">
                     <div className="text-center text-gray-500">
                       <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                       <p>Select a reservation to view details</p>
