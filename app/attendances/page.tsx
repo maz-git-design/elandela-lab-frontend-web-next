@@ -15,12 +15,11 @@ import { supabase } from '@/lib/supabase/client'
 interface Attendance {
   id: string
   user_id: string
-  activity: string
-  check_in?: string
+  activity_id?: string
+  check_in: string
   check_out?: string
   type: 'manual' | 'face' | 'qr'
   status: 'present' | 'late' | 'absent'
-  date: string
   user?: {
     full_name: string
   }
@@ -68,12 +67,11 @@ export default function AttendancesPage() {
 
   const [formData, setFormData] = useState({
     user_id: '',
-    activity: '',
-    check_in: '',
+    activity_id: '',
+    check_in: new Date().toISOString(),
     check_out: '',
     type: 'manual' as 'manual' | 'face' | 'qr',
-    status: 'present' as 'present' | 'late' | 'absent',
-    date: new Date().toISOString().split('T')[0]
+    status: 'present' as 'present' | 'late' | 'absent'
   })
 
   useEffect(() => {
@@ -88,7 +86,7 @@ export default function AttendancesPage() {
         *,
         user:profiles(full_name)
       `)
-      .order('date', { ascending: false })
+      .order('check_in', { ascending: false })
 
     if (error) {
       console.error('Error fetching attendances:', error)
@@ -146,12 +144,11 @@ export default function AttendancesPage() {
     setEditingAttendance(attendance)
     setFormData({
       user_id: attendance.user_id,
-      activity: attendance.activity,
-      check_in: attendance.check_in || '',
+      activity_id: attendance.activity_id || '',
+      check_in: attendance.check_in,
       check_out: attendance.check_out || '',
       type: attendance.type,
-      status: attendance.status,
-      date: attendance.date
+      status: attendance.status
     })
     setIsDialogOpen(true)
   }
@@ -175,12 +172,11 @@ export default function AttendancesPage() {
   const resetForm = () => {
     setFormData({
       user_id: '',
-      activity: '',
-      check_in: '',
+      activity_id: '',
+      check_in: new Date().toISOString(),
       check_out: '',
       type: 'manual',
-      status: 'present',
-      date: new Date().toISOString().split('T')[0]
+      status: 'present'
     })
   }
 
@@ -189,7 +185,7 @@ export default function AttendancesPage() {
     const userName = attendance.user?.full_name || ''
     return (
       userName.toLowerCase().includes(searchLower) ||
-      attendance.activity.toLowerCase().includes(searchLower) ||
+      (attendance.activity_id || '').toLowerCase().includes(searchLower) ||
       attendance.type.toLowerCase().includes(searchLower) ||
       attendance.status.toLowerCase().includes(searchLower)
     )
@@ -249,23 +245,12 @@ export default function AttendancesPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="activity">Activity</Label>
+                    <Label htmlFor="activity_id">Activity ID</Label>
                     <Input
-                      id="activity"
-                      value={formData.activity}
-                      onChange={(e) => setFormData({ ...formData, activity: e.target.value })}
-                      placeholder="Enter activity name"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                      id="activity_id"
+                      value={formData.activity_id}
+                      onChange={(e) => setFormData({ ...formData, activity_id: e.target.value })}
+                      placeholder="Enter activity ID"
                       required
                     />
                   </div>
@@ -275,9 +260,10 @@ export default function AttendancesPage() {
                       <Label htmlFor="check_in">Check In</Label>
                       <Input
                         id="check_in"
-                        type="time"
-                        value={formData.check_in}
-                        onChange={(e) => setFormData({ ...formData, check_in: e.target.value })}
+                        type="datetime-local"
+                        value={formData.check_in ? new Date(formData.check_in).toISOString().slice(0, 16) : ''}
+                        onChange={(e) => setFormData({ ...formData, check_in: new Date(e.target.value).toISOString() })}
+                        required
                       />
                     </div>
 
@@ -285,9 +271,9 @@ export default function AttendancesPage() {
                       <Label htmlFor="check_out">Check Out</Label>
                       <Input
                         id="check_out"
-                        type="time"
-                        value={formData.check_out}
-                        onChange={(e) => setFormData({ ...formData, check_out: e.target.value })}
+                        type="datetime-local"
+                        value={formData.check_out ? new Date(formData.check_out).toISOString().slice(0, 16) : ''}
+                        onChange={(e) => setFormData({ ...formData, check_out: e.target.value ? new Date(e.target.value).toISOString() : '' })}
                       />
                     </div>
                   </div>
@@ -412,14 +398,13 @@ export default function AttendancesPage() {
                     <th className="px-6 py-3 border-b border-gray-200">Check Out</th>
                     <th className="px-6 py-3 border-b border-gray-200">Type</th>
                     <th className="px-6 py-3 border-b border-gray-200">Status</th>
-                    <th className="px-6 py-3 border-b border-gray-200">Date</th>
                     <th className="px-6 py-3 border-b border-gray-200">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedAttendances.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                         No attendance records found
                       </td>
                     </tr>
@@ -429,9 +414,9 @@ export default function AttendancesPage() {
                         <td className="px-6 py-4 font-medium text-gray-900">
                           {attendance.user?.full_name || 'Unknown User'}
                         </td>
-                        <td className="px-6 py-4">{attendance.activity}</td>
-                        <td className="px-6 py-4">{attendance.check_in || '-'}</td>
-                        <td className="px-6 py-4">{attendance.check_out || '-'}</td>
+                        <td className="px-6 py-4">{attendance.activity_id || '-'}</td>
+                        <td className="px-6 py-4">{new Date(attendance.check_in).toLocaleString()}</td>
+                        <td className="px-6 py-4">{attendance.check_out ? new Date(attendance.check_out).toLocaleString() : '-'}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             {getTypeIcon(attendance.type)}
@@ -443,7 +428,6 @@ export default function AttendancesPage() {
                             {attendance.status}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4">{attendance.date}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <Button
