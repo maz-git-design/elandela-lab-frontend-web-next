@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import Link from 'next/link'
 
 interface Lab {
   id: string
@@ -77,8 +78,6 @@ export default function LabsPage() {
   const [editingLab, setEditingLab] = useState<Lab | null>(null)
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null)
   const [editingCategory, setEditingCategory] = useState<EquipmentCategory | null>(null)
-  const [managingLab, setManagingLab] = useState<Lab | null>(null)
-  const [labEquipment, setLabEquipment] = useState<Equipment[]>([])
 
   const [searchTerm, setSearchTerm] = useState('')
   const [searchTermLabs, setSearchTermLabs] = useState('')
@@ -229,25 +228,11 @@ export default function LabsPage() {
     })
     setEditingEquipment(null)
     fetchEquipment()
-    if (managingLab) {
-      const { data } = await supabase
-        .from('equipment')
-        .select('*, equipment_categories(name)')
-        .eq('location', managingLab.name)
-      setLabEquipment(data || [])
-    }
   }
 
   async function handleDeleteEquipment(equipmentId: string) {
     await supabase.from('equipment').delete().eq('id', equipmentId)
     fetchEquipment()
-    if (managingLab) {
-      const { data } = await supabase
-        .from('equipment')
-        .select('*, equipment_categories(name)')
-        .eq('location', managingLab.name)
-      setLabEquipment(data || [])
-    }
   }
 
   async function handleSaveCategory() {
@@ -376,10 +361,18 @@ export default function LabsPage() {
                         className="pl-10 border-gray-200"
                       />
                     </div>
-                    <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Lab
-                    </Button>
+                    <div className="flex gap-2">
+                      <Link href="/labs/manage">
+                        <Button variant="outline">
+                          <Package className="w-4 h-4 mr-2" />
+                          Manage Lab
+                        </Button>
+                      </Link>
+                      <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Lab
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -438,22 +431,16 @@ export default function LabsPage() {
                           )}
                         </div>
                         <div className="flex gap-2">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="flex-1"
-                            onClick={async () => {
-                              setManagingLab(lab)
-                              const { data } = await supabase
-                                .from('equipment')
-                                .select('*, equipment_categories(name)')
-                                .eq('location', lab.name)
-                              setLabEquipment(data || [])
-                            }}
-                          >
-                            <Package className="w-3 h-3 mr-1" />
-                            Manage
-                          </Button>
+                          <Link href="/labs/manage" className="flex-1">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="w-full"
+                            >
+                              <Package className="w-3 h-3 mr-1" />
+                              Manage
+                            </Button>
+                          </Link>
                           <Button
                             variant="outline"
                             size="sm"
@@ -1173,109 +1160,6 @@ export default function LabsPage() {
               >
                 {editingCategory ? 'Update' : 'Create'} Category
               </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!managingLab} onOpenChange={() => setManagingLab(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Manage Lab: {managingLab?.name}</DialogTitle>
-            <DialogDescription>
-              View and manage equipment in this lab
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                {labEquipment.length} equipment items in this lab
-              </div>
-              <Button
-                size="sm"
-                onClick={() => {
-                  setShowEquipmentDialog(true)
-                  setEquipmentForm({
-                    ...equipmentForm,
-                    location: managingLab?.name || ''
-                  })
-                }}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Equipment
-              </Button>
-            </div>
-
-            <div className="border rounded-lg">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Name</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Code</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Serial</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Category</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Status</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {labEquipment.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                        No equipment in this lab yet
-                      </td>
-                    </tr>
-                  ) : (
-                    labEquipment.map((item) => (
-                      <tr key={item.id} className="border-b hover:bg-gray-50">
-                        <td className="px-4 py-3 whitespace-nowrap">{item.name}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{item.code}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{item.serial_number || '-'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">{item.equipment_categories?.name || '-'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <Badge className={getStatusColor(item.current_status)}>
-                            {item.current_status || 'available'}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setEditingEquipment(item)
-                                setEquipmentForm({
-                                  name: item.name,
-                                  code: item.code,
-                                  serial_number: item.serial_number || '',
-                                  model: item.model || '',
-                                  description: item.description || '',
-                                  category_id: item.category_id || '',
-                                  current_status: item.current_status || 'available',
-                                  delivery_date: item.delivery_date || '',
-                                  entry_date: item.entry_date || '',
-                                  location: item.location || ''
-                                })
-                                setShowEquipmentDialog(true)
-                              }}
-                            >
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteEquipment(item.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
             </div>
           </div>
         </DialogContent>
