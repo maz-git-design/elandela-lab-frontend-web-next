@@ -107,7 +107,7 @@ export default function AnalyticsPage() {
   }
 
   const fetchAttendanceStats = async () => {
-    let query = supabase.from('attendance').select('*, profiles(cohort_id, cohorts(name)), activities(name)')
+    let query = supabase.from('attendance').select('*, profiles:user_id(cohort_id, cohorts(name)), activities:activity_id(name)')
 
     if (filters.cohort_id !== 'all') {
       query = query.eq('profiles.cohort_id', filters.cohort_id)
@@ -171,7 +171,7 @@ export default function AnalyticsPage() {
   }
 
   const fetchReservationStats = async () => {
-    let query = supabase.from('reservations').select('*, profiles(cohort_id), equipment(name, category_id)')
+    let query = supabase.from('reservations').select('*, profiles:user_id(cohort_id, cohorts(name)), reservation_equipment(equipment(name, category_id)), reservation_activities(activities(name))')
 
     if (filters.cohort_id !== 'all') {
       query = query.eq('profiles.cohort_id', filters.cohort_id)
@@ -180,10 +180,10 @@ export default function AnalyticsPage() {
       query = query.eq('user_id', filters.user_id)
     }
     if (filters.date_from) {
-      query = query.gte('start_time', filters.date_from)
+      query = query.gte('desired_start_time', filters.date_from)
     }
     if (filters.date_to) {
-      query = query.lte('end_time', filters.date_to)
+      query = query.lte('desired_end_time', filters.date_to)
     }
 
     const { data, error } = await query
@@ -201,12 +201,19 @@ export default function AnalyticsPage() {
         const status = reservation.status || 'unknown'
         stats.byStatus[status] = (stats.byStatus[status] || 0) + 1
 
-        const equipment = reservation.equipment?.name || 'Unknown'
-        stats.byEquipment[equipment] = (stats.byEquipment[equipment] || 0) + 1
+        const cohort = reservation.profiles?.cohorts?.name || 'Unknown'
+        stats.byCohort[cohort] = (stats.byCohort[cohort] || 0) + 1
 
-        if (reservation.start_time) {
+        if (reservation.reservation_equipment && reservation.reservation_equipment.length > 0) {
+          reservation.reservation_equipment.forEach((re: { equipment?: { name?: string } }) => {
+            const equipment = re.equipment?.name || 'Unknown'
+            stats.byEquipment[equipment] = (stats.byEquipment[equipment] || 0) + 1
+          })
+        }
+
+        if (reservation.desired_start_time) {
           let periodKey = ''
-          const date = new Date(reservation.start_time)
+          const date = new Date(reservation.desired_start_time)
 
           if (filters.period === 'day') {
             periodKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

@@ -19,6 +19,12 @@ interface Lab {
   description: string
 }
 
+interface Activity {
+  id: string
+  name: string
+  activity_type: string
+}
+
 interface Equipment {
   id: string
   name: string
@@ -37,10 +43,13 @@ export default function RequestReservationPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [labs, setLabs] = useState<Lab[]>([])
+  const [activities, setActivities] = useState<Activity[]>([])
   const [filteredEquipment, setFilteredEquipment] = useState<Equipment[]>([])
   const [selectedEquipment, setSelectedEquipment] = useState<string[]>([])
   const [availability, setAvailability] = useState<AvailabilityCheck | null>(null)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
+  const [useCustomActivity, setUseCustomActivity] = useState(false)
+  const [selectedActivityId, setSelectedActivityId] = useState('')
 
   const [formData, setFormData] = useState({
     labId: '',
@@ -68,9 +77,13 @@ export default function RequestReservationPage() {
 
   async function fetchData() {
     setLoading(true)
-    const labsRes = await supabase.from('activities').select('id, name, description').eq('activity_type', 'lab_session').order('name')
+    const [labsRes, activitiesRes] = await Promise.all([
+      supabase.from('activities').select('id, name, description').eq('activity_type', 'lab_session').order('name'),
+      supabase.from('activities').select('id, name, activity_type').order('name')
+    ])
 
     if (labsRes.data) setLabs(labsRes.data)
+    if (activitiesRes.data) setActivities(activitiesRes.data)
     setLoading(false)
   }
 
@@ -275,15 +288,60 @@ export default function RequestReservationPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="activity">Activity Name *</Label>
-                  <Input
-                    id="activity"
-                    type="text"
-                    placeholder="e.g., Circuit Testing, Research Experiment"
-                    value={formData.activityName}
-                    onChange={(e) => setFormData({ ...formData, activityName: e.target.value })}
-                    className="border-gray-300"
-                    required
-                  />
+                  {!useCustomActivity ? (
+                    <div className="space-y-2">
+                      <Select
+                        value={selectedActivityId}
+                        onValueChange={(value) => {
+                          if (value === 'custom') {
+                            setUseCustomActivity(true)
+                            setSelectedActivityId('')
+                            setFormData({ ...formData, activityName: '' })
+                          } else {
+                            setSelectedActivityId(value)
+                            const activity = activities.find(a => a.id === value)
+                            setFormData({ ...formData, activityName: activity?.name || '' })
+                          }
+                        }}
+                      >
+                        <SelectTrigger id="activity" className="border-gray-300">
+                          <SelectValue placeholder="Select an activity" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activities.map(activity => (
+                            <SelectItem key={activity.id} value={activity.id}>
+                              {activity.name}
+                            </SelectItem>
+                          ))}
+                          <SelectItem value="custom" className="text-blue-600 font-medium">
+                            + Write Custom Activity
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Input
+                        id="activity"
+                        type="text"
+                        placeholder="e.g., Circuit Testing, Research Experiment"
+                        value={formData.activityName}
+                        onChange={(e) => setFormData({ ...formData, activityName: e.target.value })}
+                        className="border-gray-300"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUseCustomActivity(false)
+                          setFormData({ ...formData, activityName: '' })
+                        }}
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        ← Back to activity list
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
