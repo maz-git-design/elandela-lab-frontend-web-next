@@ -72,9 +72,13 @@ const bottomMenuItems = [
   },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean
+  setCollapsed: (collapsed: boolean) => void
+}
+
+export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
   const [user, setUser] = useState<{ email: string; full_name?: string } | null>(null)
   const supabase = createClient()
 
@@ -132,8 +136,10 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                title={collapsed ? item.title : ''}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors relative group',
+                  collapsed ? 'justify-center' : '',
                   isActive
                     ? 'bg-blue-50 text-blue-600'
                     : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
@@ -149,14 +155,16 @@ export function Sidebar() {
         <div className="border-t border-gray-200 p-4 space-y-2">
           {bottomMenuItems.map((item) => {
             const Icon = item.icon
-            const isActive = pathname.startsWith(item.href)
+            const isActive = pathname === item.href
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                title={collapsed ? item.title : ''}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  collapsed ? 'justify-center' : '',
                   isActive
                     ? 'bg-blue-50 text-blue-600'
                     : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
@@ -168,36 +176,31 @@ export function Sidebar() {
             )
           })}
 
-          {user && (
-            <div className="flex items-center gap-3 px-3 py-2 mt-2">
+          {user && !collapsed && (
+            <div className="flex items-center gap-3 px-3 py-2 mt-2 mb-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 flex-shrink-0">
                 <UserIcon className="h-4 w-4 text-blue-600" />
               </div>
-              {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {user.full_name || 'User'}
-                  </p>
-                  <p className="text-xs text-gray-600 truncate">
-                    {user.email}
-                  </p>
-                </div>
-              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">
+                  {user.full_name || 'User'}
+                </p>
+                <p className="text-xs text-gray-600 truncate">
+                  {user.email}
+                </p>
+              </div>
             </div>
           )}
-          <Link
-            href="/settings"
+
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut()
+              window.location.href = '/auth/login'
+            }}
+            title={collapsed ? 'Logout' : ''}
             className={cn(
               'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900',
-              pathname === '/settings' ? 'bg-blue-50 text-blue-600' : ''
-            )}
-          >
-            <Settings className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && <span>Settings</span>}
-          </Link>
-          <button
-            className={cn(
-              'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900'
+              collapsed ? 'justify-center' : ''
             )}
           >
             <LogOut className="h-5 w-5 flex-shrink-0" />
