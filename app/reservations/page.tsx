@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Calendar, Plus, Clock, Search, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react'
+import { Calendar, Clock, Search, ChevronLeft, ChevronRight, Edit, Trash2, CheckSquare, UserPlus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 interface Reservation {
   id: string
@@ -26,6 +27,7 @@ interface Reservation {
 }
 
 export default function ReservationsPage() {
+  const router = useRouter()
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [equipment, setEquipment] = useState<{id: string; name: string}[]>([])
   const [users, setUsers] = useState<{id: string; email: string; full_name: string | null}[]>([])
@@ -166,10 +168,16 @@ export default function ReservationsPage() {
             <h2 className="text-2xl font-semibold text-gray-900">Reservations</h2>
             <p className="text-gray-600 mt-1">Manage equipment reservations</p>
           </div>
-          <Button onClick={() => setShowDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" />
-            New Reservation
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={() => router.push('/reservations/request')} className="bg-blue-600 hover:bg-blue-700">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Request Reservation
+            </Button>
+            <Button onClick={() => router.push('/reservations/manage')} variant="outline">
+              <CheckSquare className="h-4 w-4 mr-2" />
+              Manage Requests
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
