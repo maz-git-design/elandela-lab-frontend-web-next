@@ -83,7 +83,7 @@ export default function AttendancesPage() {
 
   const fetchAttendances = async () => {
     const { data, error } = await supabase
-      .from('attendances')
+      .from('attendance')
       .select(`
         *,
         user:profiles(full_name)
@@ -117,7 +117,7 @@ export default function AttendancesPage() {
 
     if (editingAttendance) {
       const { error } = await supabase
-        .from('attendances')
+        .from('attendance')
         .update(formData)
         .eq('id', editingAttendance.id)
 
@@ -127,7 +127,7 @@ export default function AttendancesPage() {
       }
     } else {
       const { error } = await supabase
-        .from('attendances')
+        .from('attendance')
         .insert([formData])
 
       if (error) {
@@ -160,7 +160,7 @@ export default function AttendancesPage() {
     if (!confirm('Are you sure you want to delete this attendance record?')) return
 
     const { error } = await supabase
-      .from('attendances')
+      .from('attendance')
       .delete()
       .eq('id', id)
 

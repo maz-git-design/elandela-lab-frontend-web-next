@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
   }
 
   const fetchAttendanceStats = async () => {
-    let query = supabase.from('attendances').select('*, profiles(cohort_id), activities(name, cohorts(name))')
+    let query = supabase.from('attendance').select('*, profiles(cohort_id), activities(name, cohorts(name))')
 
     if (filters.cohort_id !== 'all') {
       query = query.eq('profiles.cohort_id', filters.cohort_id)
@@ -109,10 +109,10 @@ export default function AnalyticsPage() {
       query = query.eq('activity_id', filters.activity_id)
     }
     if (filters.date_from) {
-      query = query.gte('check_in_time', filters.date_from)
+      query = query.gte('check_in', filters.date_from)
     }
     if (filters.date_to) {
-      query = query.lte('check_in_time', filters.date_to)
+      query = query.lte('check_in', filters.date_to)
     }
 
     const { data, error } = await query
@@ -140,8 +140,8 @@ export default function AnalyticsPage() {
         stats.byLab[activity] = (stats.byLab[activity] || 0) + 1
 
         // By month
-        if (attendance.check_in_time) {
-          const month = new Date(attendance.check_in_time).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        if (attendance.check_in) {
+          const month = new Date(attendance.check_in).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
           stats.byMonth[month] = (stats.byMonth[month] || 0) + 1
         }
       })

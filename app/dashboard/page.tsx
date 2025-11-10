@@ -44,9 +44,9 @@ export default function DashboardPage() {
       equipmentData,
       usersData
     ] = await Promise.all([
-      supabase.from('attendances').select('*, activities(name)', { count: 'exact' }),
-      supabase.from('attendances').select('id', { count: 'exact' }).gte('check_in_time', thirtyDaysAgo.toISOString()),
-      supabase.from('attendances').select('id', { count: 'exact' }).gte('check_in_time', sixtyDaysAgo.toISOString()).lt('check_in_time', thirtyDaysAgo.toISOString()),
+      supabase.from('attendance').select('*, activities(name)', { count: 'exact' }),
+      supabase.from('attendance').select('id', { count: 'exact' }).gte('check_in', thirtyDaysAgo.toISOString()),
+      supabase.from('attendance').select('id', { count: 'exact' }).gte('check_in', sixtyDaysAgo.toISOString()).lt('check_in', thirtyDaysAgo.toISOString()),
       supabase.from('reservations').select('*, equipment(name)', { count: 'exact' }),
       supabase.from('reservations').select('id', { count: 'exact' }).gte('start_time', thirtyDaysAgo.toISOString()),
       supabase.from('reservations').select('id', { count: 'exact' }).gte('start_time', sixtyDaysAgo.toISOString()).lt('start_time', thirtyDaysAgo.toISOString()),
@@ -107,7 +107,7 @@ export default function DashboardPage() {
       const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59).toISOString()
 
       const [attCount, resCount] = await Promise.all([
-        supabase.from('attendances').select('id', { count: 'exact' }).gte('check_in_time', monthStart).lte('check_in_time', monthEnd),
+        supabase.from('attendance').select('id', { count: 'exact' }).gte('check_in', monthStart).lte('check_in', monthEnd),
         supabase.from('reservations').select('id', { count: 'exact' }).gte('start_time', monthStart).lte('start_time', monthEnd)
       ])
 
@@ -123,13 +123,13 @@ export default function DashboardPage() {
     const recentAtt = await supabase
       .from('attendances')
       .select('*, profiles(first_name, last_name), activities(name)')
-      .order('check_in_time', { ascending: false })
+      .order('check_in', { ascending: false })
       .limit(5)
 
     const activities = recentAtt.data?.map((att) => ({
       user: `${att.profiles?.first_name || ''} ${att.profiles?.last_name || ''}`.trim() || 'Unknown User',
       action: `checked in for ${att.activities?.name || 'Lab Session'}`,
-      time: new Date(att.check_in_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      time: new Date(att.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
       type: 'attendance'
     })) || []
 
