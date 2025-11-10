@@ -49,6 +49,10 @@ export default function ManageReservationsPage() {
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [labFilter, setLabFilter] = useState('all')
+  const [timeFilter, setTimeFilter] = useState('all')
+  const [customDateFrom, setCustomDateFrom] = useState('')
+  const [customDateTo, setCustomDateTo] = useState('')
+  const [showCustomDateInputs, setShowCustomDateInputs] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -184,7 +188,34 @@ export default function ManageReservationsPage() {
       matchesLab = selectedLab ? selectedLab.name === labName : false
     }
 
-    return matchesSearch && matchesPriority && matchesStatus && matchesLab
+    let matchesTime = true
+    if (timeFilter !== 'all') {
+      const reservationDate = new Date(reservation.desired_start_time)
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+      if (timeFilter === 'today') {
+        const reservationDay = new Date(reservationDate.getFullYear(), reservationDate.getMonth(), reservationDate.getDate())
+        matchesTime = reservationDay.getTime() === today.getTime()
+      } else if (timeFilter === 'week') {
+        const weekAgo = new Date(today)
+        weekAgo.setDate(weekAgo.getDate() - 7)
+        matchesTime = reservationDate >= weekAgo && reservationDate <= now
+      } else if (timeFilter === 'month') {
+        const monthAgo = new Date(today)
+        monthAgo.setMonth(monthAgo.getMonth() - 1)
+        matchesTime = reservationDate >= monthAgo && reservationDate <= now
+      } else if (timeFilter === 'custom') {
+        if (customDateFrom && customDateTo) {
+          const fromDate = new Date(customDateFrom)
+          const toDate = new Date(customDateTo)
+          toDate.setHours(23, 59, 59, 999)
+          matchesTime = reservationDate >= fromDate && reservationDate <= toDate
+        }
+      }
+    }
+
+    return matchesSearch && matchesPriority && matchesStatus && matchesLab && matchesTime
   })
 
   const getLabName = (reservation: Reservation) => {
@@ -221,7 +252,7 @@ export default function ManageReservationsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 pb-8">
         <Breadcrumb items={[
           { label: 'Reservations', href: '/reservations' },
           { label: 'Manage Requests' }
@@ -232,7 +263,7 @@ export default function ManageReservationsPage() {
           <p className="text-sm text-gray-600">Review and approve pending reservation requests</p>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <Select value={labFilter} onValueChange={setLabFilter}>
             <SelectTrigger className="w-48 border-blue-600 text-blue-600 font-medium">
               <SelectValue placeholder="Lab" />
@@ -271,12 +302,39 @@ export default function ManageReservationsPage() {
             </SelectContent>
           </Select>
 
-          {(labFilter !== 'all' || priorityFilter !== 'all' || statusFilter !== 'all') && (
+          <Select
+            value={timeFilter}
+            onValueChange={(value) => {
+              setTimeFilter(value)
+              setShowCustomDateInputs(value === 'custom')
+              if (value !== 'custom') {
+                setCustomDateFrom('')
+                setCustomDateTo('')
+              }
+            }}
+          >
+            <SelectTrigger className="w-48 border-gray-300">
+              <SelectValue placeholder="Time Period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+              <SelectItem value="custom">Custom Period</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {(labFilter !== 'all' || priorityFilter !== 'all' || statusFilter !== 'all' || timeFilter !== 'all') && (
             <button
               onClick={() => {
                 setLabFilter('all')
                 setPriorityFilter('all')
                 setStatusFilter('all')
+                setTimeFilter('all')
+                setShowCustomDateInputs(false)
+                setCustomDateFrom('')
+                setCustomDateTo('')
               }}
               className="text-blue-600 hover:underline font-medium flex items-center gap-1"
             >
@@ -285,6 +343,33 @@ export default function ManageReservationsPage() {
             </button>
           )}
         </div>
+
+        {showCustomDateInputs && (
+          <Card className="border-gray-300">
+            <CardContent className="p-4">
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">From Date</Label>
+                  <Input
+                    type="date"
+                    value={customDateFrom}
+                    onChange={(e) => setCustomDateFrom(e.target.value)}
+                    className="border-gray-300"
+                  />
+                </div>
+                <div className="flex-1">
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">To Date</Label>
+                  <Input
+                    type="date"
+                    value={customDateTo}
+                    onChange={(e) => setCustomDateTo(e.target.value)}
+                    className="border-gray-300"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="text-sm text-gray-600">
           {filteredReservations.length} results
