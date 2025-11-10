@@ -8,8 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BarChart3, TrendingUp, Users, Calendar, Activity } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
-import { LineChart } from '@/components/charts/line-chart'
-import { BarChart as BarChartComponent } from '@/components/charts/bar-chart'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface FilterOptions {
   cohorts: Array<{ id: string; name: string }>
@@ -456,7 +455,17 @@ export default function AnalyticsPage() {
                       <CardDescription>Distribution across student groups</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <BarChartComponent data={attendanceStats.byCohort} color="rgb(59, 130, 246)" height={250} />
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={Object.entries(attendanceStats.byCohort).map(([name, value]) => ({ name, value }))} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis type="number" stroke="#64748b" style={{ fontSize: '12px' }} />
+                            <YAxis type="category" dataKey="name" stroke="#64748b" style={{ fontSize: '11px' }} width={100} />
+                            <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                            <Bar dataKey="value" fill="rgb(59, 130, 246)" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                     </CardContent>
                   </Card>
 
@@ -466,7 +475,17 @@ export default function AnalyticsPage() {
                       <CardDescription>Most attended activities</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <BarChartComponent data={attendanceStats.byLab} color="rgb(168, 85, 247)" height={250} />
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={Object.entries(attendanceStats.byLab).map(([name, value]) => ({ name, value }))} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis type="number" stroke="#64748b" style={{ fontSize: '12px' }} />
+                            <YAxis type="category" dataKey="name" stroke="#64748b" style={{ fontSize: '11px' }} width={100} />
+                            <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                            <Bar dataKey="value" fill="rgb(168, 85, 247)" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -480,9 +499,45 @@ export default function AnalyticsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <LineChart data={attendanceStats.byMonth} color="rgb(20, 184, 166)" height={300} />
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={Object.entries(attendanceStats.byMonth).map(([name, value]) => ({ name, value }))}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '12px' }} />
+                          <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                          <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                          <Legend />
+                          <Line type="monotone" dataKey="value" stroke="rgb(20, 184, 166)" strokeWidth={2} dot={{ r: 4 }} name="Attendances" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </CardContent>
                 </Card>
+
+                {filters.user_id !== 'all' && (
+                  <Card className="border-gray-200">
+                    <CardHeader>
+                      <CardTitle className="text-lg">User Attendance History</CardTitle>
+                      <CardDescription>
+                        Detailed attendance tracking for selected user over time
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={Object.entries(attendanceStats.byMonth).map(([name, value]) => ({ name, attendances: value }))}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '12px' }} />
+                            <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                            <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                            <Legend />
+                            <Line type="monotone" dataKey="attendances" stroke="#3b82f6" strokeWidth={3} dot={{ r: 5, fill: '#3b82f6' }} name="Attendances" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </>
             )}
           </TabsContent>
@@ -532,7 +587,17 @@ export default function AnalyticsPage() {
                       <CardDescription>Most popular equipment</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <BarChartComponent data={reservationStats.byEquipment} color="rgb(249, 115, 22)" height={250} />
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={Object.entries(reservationStats.byEquipment).map(([name, value]) => ({ name, value }))} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis type="number" stroke="#64748b" style={{ fontSize: '12px' }} />
+                            <YAxis type="category" dataKey="name" stroke="#64748b" style={{ fontSize: '11px' }} width={120} />
+                            <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                            <Bar dataKey="value" fill="rgb(249, 115, 22)" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                     </CardContent>
                   </Card>
 
@@ -542,7 +607,17 @@ export default function AnalyticsPage() {
                       <CardDescription>Usage across groups</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <BarChartComponent data={reservationStats.byCohort} color="rgb(99, 102, 241)" height={250} />
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={Object.entries(reservationStats.byCohort).map(([name, value]) => ({ name, value }))} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis type="number" stroke="#64748b" style={{ fontSize: '12px' }} />
+                            <YAxis type="category" dataKey="name" stroke="#64748b" style={{ fontSize: '11px' }} width={100} />
+                            <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                            <Bar dataKey="value" fill="rgb(99, 102, 241)" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -556,9 +631,45 @@ export default function AnalyticsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <LineChart data={reservationStats.byMonth} color="rgb(236, 72, 153)" height={300} />
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={Object.entries(reservationStats.byMonth).map(([name, value]) => ({ name, value }))}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '12px' }} />
+                          <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                          <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                          <Legend />
+                          <Line type="monotone" dataKey="value" stroke="rgb(236, 72, 153)" strokeWidth={2} dot={{ r: 4 }} name="Reservations" />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </CardContent>
                 </Card>
+
+                {filters.user_id !== 'all' && (
+                  <Card className="border-gray-200">
+                    <CardHeader>
+                      <CardTitle className="text-lg">User Reservation History</CardTitle>
+                      <CardDescription>
+                        Detailed reservation tracking for selected user over time
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={Object.entries(reservationStats.byMonth).map(([name, value]) => ({ name, reservations: value }))}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                            <XAxis dataKey="name" stroke="#64748b" style={{ fontSize: '12px' }} />
+                            <YAxis stroke="#64748b" style={{ fontSize: '12px' }} />
+                            <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '8px' }} />
+                            <Legend />
+                            <Line type="monotone" dataKey="reservations" stroke="#ec4899" strokeWidth={3} dot={{ r: 5, fill: '#ec4899' }} name="Reservations" />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </>
             )}
           </TabsContent>
