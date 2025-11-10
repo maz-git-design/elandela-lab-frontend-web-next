@@ -246,19 +246,19 @@ export default function ReservationsPage() {
                     <tbody>
                       {paginatedReservations.map((reservation) => (
                         <tr key={reservation.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
-                          <td className="px-6 py-4 font-medium text-gray-900">
+                          <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                             {reservation.profiles?.full_name || reservation.profiles?.email || 'Unknown'}
                           </td>
-                          <td className="px-6 py-4">{reservation.equipment?.name || 'Unknown'}</td>
-                          <td className="px-6 py-4">{new Date(reservation.start_time).toLocaleString()}</td>
-                          <td className="px-6 py-4">{new Date(reservation.end_time).toLocaleString()}</td>
-                          <td className="px-6 py-4">{reservation.purpose || '-'}</td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 whitespace-nowrap">{reservation.equipment?.name || 'Unknown'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{new Date(reservation.start_time).toLocaleString()}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{new Date(reservation.end_time).toLocaleString()}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{reservation.purpose || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <Badge className={getStatusColor(reservation.status)}>
                               {reservation.status || 'pending'}
                             </Badge>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex gap-2">
                               <Button
                                 variant="outline"

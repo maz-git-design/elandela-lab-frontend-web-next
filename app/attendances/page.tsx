@@ -411,24 +411,24 @@ export default function AttendancesPage() {
                   ) : (
                     paginatedAttendances.map((attendance) => (
                       <tr key={attendance.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
-                        <td className="px-6 py-4 font-medium text-gray-900">
+                        <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                           {attendance.user?.full_name || 'Unknown User'}
                         </td>
-                        <td className="px-6 py-4">{attendance.activity_id || '-'}</td>
-                        <td className="px-6 py-4">{new Date(attendance.check_in).toLocaleString()}</td>
-                        <td className="px-6 py-4">{attendance.check_out ? new Date(attendance.check_out).toLocaleString() : '-'}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 whitespace-nowrap">{attendance.activity_id || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{new Date(attendance.check_in).toLocaleString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{attendance.check_out ? new Date(attendance.check_out).toLocaleString() : '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             {getTypeIcon(attendance.type)}
                             <span className="capitalize">{attendance.type}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <Badge className={getStatusColor(attendance.status)}>
                             {attendance.status}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <Button
                               variant="ghost"

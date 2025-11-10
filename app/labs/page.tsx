@@ -591,18 +591,18 @@ export default function LabsPage() {
                           ) : (
                             paginatedEquipment.map((item) => (
                           <tr key={item.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
-                            <td className="px-6 py-4 font-medium text-gray-900">
+                            <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                               {item.name}
                             </td>
-                            <td className="px-6 py-4">{item.code}</td>
-                            <td className="px-6 py-4">{item.serial_number || '-'}</td>
-                            <td className="px-6 py-4">{item.equipment_categories?.name || '-'}</td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 whitespace-nowrap">{item.code}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{item.serial_number || '-'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">{item.equipment_categories?.name || '-'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
                               <Badge className={getStatusColor(item.current_status)}>
                                 {item.current_status || 'available'}
                               </Badge>
                             </td>
-                            <td className="px-6 py-4">
+                            <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex gap-2">
                                 <Button
                                   variant="outline"

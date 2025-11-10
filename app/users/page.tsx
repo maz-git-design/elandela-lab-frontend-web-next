@@ -340,19 +340,19 @@ export default function UsersPage() {
                   ) : (
                     paginatedUsers.map((user) => (
                       <tr key={user.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
-                        <td className="px-6 py-4 font-medium text-gray-900">
+                        <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                           {user.first_name} {user.last_name}
                         </td>
-                        <td className="px-6 py-4">{user.username || '-'}</td>
-                        <td className="px-6 py-4">{user.email}</td>
-                        <td className="px-6 py-4">{user.cohorts?.name || '-'}</td>
-                        <td className="px-6 py-4">{user.phone_number || '-'}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 whitespace-nowrap">{user.username || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{user.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{user.cohorts?.name || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{user.phone_number || '-'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <Badge className={getStatusColor(user.status_state)}>
                             {user.status_state || 'pending'}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(user)}>
                               <Edit className="h-4 w-4" />
