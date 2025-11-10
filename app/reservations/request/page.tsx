@@ -302,7 +302,9 @@ export default function RequestReservationPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="startTime">Desired Start Time *</Label>
                   <Input
@@ -326,6 +328,9 @@ export default function RequestReservationPage() {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
 
                 <div className="space-y-2">
                   <Label htmlFor="priority">Priority</Label>

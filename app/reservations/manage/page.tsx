@@ -393,17 +393,63 @@ export default function ManageReservationsPage() {
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
                   <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    {currentPage > 2 && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(1)}
+                          className="border-gray-300"
+                        >
+                          1
+                        </Button>
+                        {currentPage > 3 && <span className="px-2 text-gray-500">...</span>}
+                      </>
+                    )}
+
+                    {currentPage > 1 && (
                       <Button
-                        key={page}
-                        variant={page === currentPage ? 'default' : 'outline'}
+                        variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage(page)}
-                        className={page === currentPage ? '' : 'border-gray-300'}
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className="border-gray-300"
                       >
-                        {page}
+                        {currentPage - 1}
                       </Button>
-                    ))}
+                    )}
+
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="bg-blue-600"
+                    >
+                      {currentPage}
+                    </Button>
+
+                    {currentPage < totalPages && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className="border-gray-300"
+                      >
+                        {currentPage + 1}
+                      </Button>
+                    )}
+
+                    {currentPage < totalPages - 1 && (
+                      <>
+                        {currentPage < totalPages - 2 && <span className="px-2 text-gray-500">...</span>}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCurrentPage(totalPages)}
+                          className="border-gray-300"
+                        >
+                          {totalPages}
+                        </Button>
+                      </>
+                    )}
                   </div>
                   <Button
                     variant="outline"
