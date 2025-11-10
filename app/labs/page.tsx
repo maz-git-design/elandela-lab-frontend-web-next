@@ -746,40 +746,51 @@ export default function LabsPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {paginatedCategories.map(category => (
-                      <div key={category.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center">
-                            <Package className="w-5 h-5 text-teal-600" />
+                      <div key={category.id} className="group bg-white rounded-xl border border-gray-200 hover:border-teal-300 hover:shadow-md transition-all duration-200 overflow-hidden">
+                        <div className="p-5">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center shadow-sm">
+                                <Package className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-gray-900 text-lg truncate" title={category.name}>
+                                  {category.name}
+                                </h4>
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingCategory(category)
-                                setCategoryForm({
-                                  name: category.name,
-                                  description: category.description || ''
-                                })
-                                setShowCategoryDialog(true)
-                              }}
-                            >
-                              <Edit className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteCategory(category.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
+                          <p className="text-sm text-gray-600 line-clamp-2 min-h-[2.5rem]">
+                            {category.description || 'No description available'}
+                          </p>
                         </div>
-                        <h4 className="font-semibold text-gray-900 mb-1">{category.name}</h4>
-                        <p className="text-sm text-gray-600">{category.description || 'No description'}</p>
+                        <div className="bg-gray-50 px-5 py-3 flex gap-2 border-t border-gray-100">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setEditingCategory(category)
+                              setCategoryForm({
+                                name: category.name,
+                                description: category.description || ''
+                              })
+                              setShowCategoryDialog(true)
+                            }}
+                            className="hover:bg-gray-200"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteCategory(category.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </div>
                       ))}
                     </div>
