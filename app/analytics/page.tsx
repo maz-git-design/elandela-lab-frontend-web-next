@@ -1,0 +1,517 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BarChart3, TrendingUp, Users, Calendar, Activity } from 'lucide-react'
+import { supabase } from '@/lib/supabase/client'
+
+interface FilterOptions {
+  cohorts: Array<{ id: string; name: string }>
+  academicYears: Array<{ id: string; starting_year: number; ending_year: number }>
+  labs: Array<{ id: string; name: string }>
+  activities: Array<{ id: string; name: string }>
+  departments: Array<{ id: string; name: string }>
+}
+
+interface AttendanceStats {
+  total: number
+  byStatus: Record<string, number>
+  byCohort: Record<string, number>
+  byLab: Record<string, number>
+  byMonth: Record<string, number>
+}
+
+interface ReservationStats {
+  total: number
+  byStatus: Record<string, number>
+  byCohort: Record<string, number>
+  byEquipment: Record<string, number>
+  byMonth: Record<string, number>
+}
+
+export default function AnalyticsPage() {
+  const [filters, setFilters] = useState({
+    cohort_id: 'all',
+    academic_year_id: 'all',
+    lab_id: 'all',
+    activity_id: 'all',
+    department_id: 'all',
+    date_from: '',
+    date_to: ''
+  })
+
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    cohorts: [],
+    academicYears: [],
+    labs: [],
+    activities: [],
+    departments: []
+  })
+
+  const [attendanceStats, setAttendanceStats] = useState<AttendanceStats>({
+    total: 0,
+    byStatus: {},
+    byCohort: {},
+    byLab: {},
+    byMonth: {}
+  })
+
+  const [reservationStats, setReservationStats] = useState<ReservationStats>({
+    total: 0,
+    byStatus: {},
+    byCohort: {},
+    byEquipment: {},
+    byMonth: {}
+  })
+
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchFilterOptions()
+    fetchAnalytics()
+  }, [filters])
+
+  const fetchFilterOptions = async () => {
+    const [cohorts, academicYears, labs, activities, departments] = await Promise.all([
+      supabase.from('cohorts').select('id, name').order('name'),
+      supabase.from('academic_years').select('id, starting_year, ending_year').order('starting_year', { ascending: false }),
+      supabase.from('activities').select('id, name').order('name'),
+      supabase.from('activities').select('id, name').order('name'),
+      supabase.from('departments').select('id, name').order('name')
+    ])
+
+    setFilterOptions({
+      cohorts: cohorts.data || [],
+      academicYears: academicYears.data || [],
+      labs: labs.data || [],
+      activities: activities.data || [],
+      departments: departments.data || []
+    })
+  }
+
+  const fetchAnalytics = async () => {
+    setLoading(true)
+    await Promise.all([fetchAttendanceStats(), fetchReservationStats()])
+    setLoading(false)
+  }
+
+  const fetchAttendanceStats = async () => {
+    let query = supabase.from('attendances').select('*, profiles(cohort_id), activities(name, cohorts(name))')
+
+    if (filters.cohort_id !== 'all') {
+      query = query.eq('profiles.cohort_id', filters.cohort_id)
+    }
+    if (filters.activity_id !== 'all') {
+      query = query.eq('activity_id', filters.activity_id)
+    }
+    if (filters.date_from) {
+      query = query.gte('check_in_time', filters.date_from)
+    }
+    if (filters.date_to) {
+      query = query.lte('check_in_time', filters.date_to)
+    }
+
+    const { data, error } = await query
+
+    if (!error && data) {
+      const stats: AttendanceStats = {
+        total: data.length,
+        byStatus: {},
+        byCohort: {},
+        byLab: {},
+        byMonth: {}
+      }
+
+      data.forEach((attendance) => {
+        // By status
+        const status = attendance.status || 'unknown'
+        stats.byStatus[status] = (stats.byStatus[status] || 0) + 1
+
+        // By cohort
+        const cohort = attendance.activities?.cohorts?.name || 'Unknown'
+        stats.byCohort[cohort] = (stats.byCohort[cohort] || 0) + 1
+
+        // By lab/activity
+        const activity = attendance.activities?.name || 'Unknown'
+        stats.byLab[activity] = (stats.byLab[activity] || 0) + 1
+
+        // By month
+        if (attendance.check_in_time) {
+          const month = new Date(attendance.check_in_time).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+          stats.byMonth[month] = (stats.byMonth[month] || 0) + 1
+        }
+      })
+
+      setAttendanceStats(stats)
+    }
+  }
+
+  const fetchReservationStats = async () => {
+    let query = supabase.from('reservations').select('*, profiles(cohort_id), equipment(name, category_id)')
+
+    if (filters.cohort_id !== 'all') {
+      query = query.eq('profiles.cohort_id', filters.cohort_id)
+    }
+    if (filters.date_from) {
+      query = query.gte('start_time', filters.date_from)
+    }
+    if (filters.date_to) {
+      query = query.lte('end_time', filters.date_to)
+    }
+
+    const { data, error } = await query
+
+    if (!error && data) {
+      const stats: ReservationStats = {
+        total: data.length,
+        byStatus: {},
+        byCohort: {},
+        byEquipment: {},
+        byMonth: {}
+      }
+
+      data.forEach((reservation) => {
+        // By status
+        const status = reservation.status || 'unknown'
+        stats.byStatus[status] = (stats.byStatus[status] || 0) + 1
+
+        // By equipment
+        const equipment = reservation.equipment?.name || 'Unknown'
+        stats.byEquipment[equipment] = (stats.byEquipment[equipment] || 0) + 1
+
+        // By month
+        if (reservation.start_time) {
+          const month = new Date(reservation.start_time).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+          stats.byMonth[month] = (stats.byMonth[month] || 0) + 1
+        }
+      })
+
+      setReservationStats(stats)
+    }
+  }
+
+  const BarChart = ({ data, title, color }: { data: Record<string, number>; title: string; color: string }) => {
+    if (!title) { /* placeholder */ }
+    const maxValue = Math.max(...Object.values(data), 1)
+    const entries = Object.entries(data).slice(0, 10)
+
+    return (
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
+        {entries.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">No data available</p>
+        ) : (
+          <div className="space-y-2">
+            {entries.map(([key, value]) => (
+              <div key={key}>
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="text-gray-700 truncate flex-1">{key}</span>
+                  <span className="font-semibold text-gray-900 ml-2">{value}</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div
+                    className={`${color} h-2 rounded-full transition-all duration-300`}
+                    style={{ width: `${(value / maxValue) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const StatCard = ({ title, value, icon: Icon, color, description }: { title: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string; description: string }) => (
+    <Card className="border-gray-200">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium text-gray-600">{title}</CardTitle>
+        <div className={`${color} rounded-lg p-2`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <p className="text-xs text-gray-600 mt-1">{description}</p>
+      </CardContent>
+    </Card>
+  )
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Analytics</h1>
+          <p className="text-gray-600 mt-1">Comprehensive analysis of attendances, reservations, and usage patterns</p>
+        </div>
+
+        <Card className="border-gray-200">
+          <CardHeader>
+            <CardTitle>Filters</CardTitle>
+            <CardDescription>Filter data by various parameters</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Cohort</label>
+                <Select value={filters.cohort_id} onValueChange={(value) => setFilters({ ...filters, cohort_id: value })}>
+                  <SelectTrigger className="border-gray-200">
+                    <SelectValue placeholder="All Cohorts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Cohorts</SelectItem>
+                    {filterOptions.cohorts.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Academic Year</label>
+                <Select value={filters.academic_year_id} onValueChange={(value) => setFilters({ ...filters, academic_year_id: value })}>
+                  <SelectTrigger className="border-gray-200">
+                    <SelectValue placeholder="All Years" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Years</SelectItem>
+                    {filterOptions.academicYears.map((y) => (
+                      <SelectItem key={y.id} value={y.id}>{y.starting_year}-{y.ending_year}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Lab</label>
+                <Select value={filters.lab_id} onValueChange={(value) => setFilters({ ...filters, lab_id: value })}>
+                  <SelectTrigger className="border-gray-200">
+                    <SelectValue placeholder="All Labs" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Labs</SelectItem>
+                    {filterOptions.labs.map((l) => (
+                      <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Activity</label>
+                <Select value={filters.activity_id} onValueChange={(value) => setFilters({ ...filters, activity_id: value })}>
+                  <SelectTrigger className="border-gray-200">
+                    <SelectValue placeholder="All Activities" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Activities</SelectItem>
+                    {filterOptions.activities.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">From Date</label>
+                <input
+                  type="date"
+                  value={filters.date_from}
+                  onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">To Date</label>
+                <input
+                  type="date"
+                  value={filters.date_to}
+                  onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <Button onClick={fetchAnalytics} className="bg-blue-600 hover:bg-blue-700">
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Apply Filters
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setFilters({ cohort_id: 'all', academic_year_id: 'all', lab_id: 'all', activity_id: 'all', department_id: 'all', date_from: '', date_to: '' })
+                }}
+              >
+                Reset
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Tabs defaultValue="attendances" className="space-y-6">
+          <TabsList className="bg-gray-100">
+            <TabsTrigger value="attendances" className="gap-2">
+              <Users className="w-4 h-4" />
+              Attendances
+            </TabsTrigger>
+            <TabsTrigger value="reservations" className="gap-2">
+              <Calendar className="w-4 h-4" />
+              Reservations
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="attendances" className="space-y-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <StatCard
+                    title="Total Attendances"
+                    value={attendanceStats.total}
+                    icon={Users}
+                    color="bg-blue-50 text-blue-600"
+                    description="All time records"
+                  />
+                  <StatCard
+                    title="Present"
+                    value={attendanceStats.byStatus['present'] || 0}
+                    icon={TrendingUp}
+                    color="bg-green-50 text-green-600"
+                    description="Checked in"
+                  />
+                  <StatCard
+                    title="Absent"
+                    value={attendanceStats.byStatus['absent'] || 0}
+                    icon={Users}
+                    color="bg-red-50 text-red-600"
+                    description="Did not attend"
+                  />
+                  <StatCard
+                    title="Late"
+                    value={attendanceStats.byStatus['late'] || 0}
+                    icon={Activity}
+                    color="bg-yellow-50 text-yellow-600"
+                    description="Checked in late"
+                  />
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Card className="border-gray-200">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Attendances by Cohort</CardTitle>
+                      <CardDescription>Distribution across student groups</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <BarChart data={attendanceStats.byCohort} title="" color="bg-blue-500" />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-gray-200">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Attendances by Activity</CardTitle>
+                      <CardDescription>Most attended activities</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <BarChart data={attendanceStats.byLab} title="" color="bg-purple-500" />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="border-gray-200">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Monthly Attendance Trend</CardTitle>
+                    <CardDescription>Attendance patterns over time</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <BarChart data={attendanceStats.byMonth} title="" color="bg-teal-500" />
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="reservations" className="space-y-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <StatCard
+                    title="Total Reservations"
+                    value={reservationStats.total}
+                    icon={Calendar}
+                    color="bg-blue-50 text-blue-600"
+                    description="All time bookings"
+                  />
+                  <StatCard
+                    title="Confirmed"
+                    value={reservationStats.byStatus['confirmed'] || 0}
+                    icon={TrendingUp}
+                    color="bg-green-50 text-green-600"
+                    description="Approved bookings"
+                  />
+                  <StatCard
+                    title="Pending"
+                    value={reservationStats.byStatus['pending'] || 0}
+                    icon={Activity}
+                    color="bg-yellow-50 text-yellow-600"
+                    description="Awaiting approval"
+                  />
+                  <StatCard
+                    title="Cancelled"
+                    value={reservationStats.byStatus['cancelled'] || 0}
+                    icon={Calendar}
+                    color="bg-red-50 text-red-600"
+                    description="Cancelled bookings"
+                  />
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                  <Card className="border-gray-200">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Top Equipment Reserved</CardTitle>
+                      <CardDescription>Most popular equipment</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <BarChart data={reservationStats.byEquipment} title="" color="bg-orange-500" />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-gray-200">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Reservations by Cohort</CardTitle>
+                      <CardDescription>Usage across groups</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <BarChart data={reservationStats.byCohort} title="" color="bg-indigo-500" />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card className="border-gray-200">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Monthly Reservation Trend</CardTitle>
+                    <CardDescription>Booking patterns over time</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <BarChart data={reservationStats.byMonth} title="" color="bg-pink-500" />
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  )
+}

@@ -13,7 +13,9 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  User as UserIcon
+  User as UserIcon,
+  BarChart3,
+  Layers
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -24,6 +26,11 @@ const menuItems = [
     title: 'Dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
+  },
+  {
+    title: 'Analytics',
+    href: '/analytics',
+    icon: BarChart3,
   },
   {
     title: 'Attendances',
@@ -46,13 +53,21 @@ const menuItems = [
     icon: Users,
   },
   {
+    title: 'Management',
+    href: '/management',
+    icon: Layers,
+  },
+  {
     title: 'Admin',
     href: '/admin',
     icon: Shield,
   },
+]
+
+const bottomMenuItems = [
   {
-    title: 'Management',
-    href: '/management',
+    title: 'Settings',
+    href: '/settings',
     icon: Settings,
   },
 ]
@@ -132,8 +147,29 @@ export function Sidebar() {
         </nav>
 
         <div className="border-t border-gray-200 p-4 space-y-2">
+          {bottomMenuItems.map((item) => {
+            const Icon = item.icon
+            const isActive = pathname.startsWith(item.href)
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                )}
+              >
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                {!collapsed && <span>{item.title}</span>}
+              </Link>
+            )
+          })}
+
           {user && (
-            <div className="flex items-center gap-3 px-3 py-2 mb-2">
+            <div className="flex items-center gap-3 px-3 py-2 mt-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 flex-shrink-0">
                 <UserIcon className="h-4 w-4 text-blue-600" />
               </div>
