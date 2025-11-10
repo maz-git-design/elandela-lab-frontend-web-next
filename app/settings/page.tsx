@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { User, Mail, Lock, Save, AlertTriangle } from 'lucide-react'
+import { getDataSourceConfig, setDataSourceConfig, DataSourceType } from '@/lib/config/data-source'
+import { User, Mail, Lock, Save, AlertTriangle, Database, Server } from 'lucide-react'
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false)
@@ -21,6 +23,9 @@ export default function SettingsPage() {
     new: '',
     confirm: '',
   })
+  const [dataSource, setDataSource] = useState<DataSourceType>('supabase')
+  const [apiUrl, setApiUrl] = useState('')
+  const [dataSourceMessage, setDataSourceMessage] = useState('')
 
   const supabase = createClient()
 
@@ -41,6 +46,10 @@ export default function SettingsPage() {
       }
     }
     fetchProfile()
+
+    const config = getDataSourceConfig()
+    setDataSource(config.type)
+    setApiUrl(config.apiBaseUrl || '')
   }, [])
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -117,6 +126,22 @@ export default function SettingsPage() {
     }
   }
 
+  const handleDataSourceSave = () => {
+    setDataSourceMessage('')
+
+    if (dataSource === 'api' && !apiUrl.trim()) {
+      setDataSourceMessage('Please enter an API URL')
+      return
+    }
+
+    setDataSourceConfig({
+      type: dataSource,
+      apiBaseUrl: dataSource === 'api' ? apiUrl : undefined,
+    })
+
+    setDataSourceMessage('Data source configuration saved successfully. Refresh the page to apply changes.')
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl">
@@ -134,6 +159,75 @@ export default function SettingsPage() {
             {message}
           </div>
         )}
+
+        <Card className="border-gray-200">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-blue-600" />
+              <CardTitle>Data Source Configuration</CardTitle>
+            </div>
+            <CardDescription>Choose between Supabase database or your remote NestJS API</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {dataSourceMessage && (
+                <div className={`p-4 rounded-lg ${
+                  dataSourceMessage.includes('success')
+                    ? 'bg-green-50 text-green-800 border border-green-200'
+                    : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
+                }`}>
+                  {dataSourceMessage}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="dataSource">Data Source</Label>
+                <Select value={dataSource} onValueChange={(value) => setDataSource(value as DataSourceType)}>
+                  <SelectTrigger className="border-gray-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="supabase">
+                      <div className="flex items-center gap-2">
+                        <Database className="h-4 w-4" />
+                        <span>Supabase Database</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="api">
+                      <div className="flex items-center gap-2">
+                        <Server className="h-4 w-4" />
+                        <span>Remote API (NestJS)</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {dataSource === 'api' && (
+                <div className="space-y-2">
+                  <Label htmlFor="apiUrl">API Base URL</Label>
+                  <Input
+                    id="apiUrl"
+                    type="url"
+                    value={apiUrl}
+                    onChange={(e) => setApiUrl(e.target.value)}
+                    className="border-gray-200"
+                    placeholder="https://api.example.com"
+                    required
+                  />
+                  <p className="text-xs text-gray-500">
+                    Enter the base URL of your NestJS API server
+                  </p>
+                </div>
+              )}
+
+              <Button onClick={handleDataSourceSave} className="gap-2">
+                <Save className="h-4 w-4" />
+                Save Data Source
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card className="border-gray-200">
           <CardHeader>

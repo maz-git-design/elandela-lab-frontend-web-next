@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Check, X, Clock, Calendar, User, Package, AlertCircle, MessageSquare } from 'lucide-react'
-import { supabase } from '@/lib/supabase/client'
+import { dataService } from '@/lib/services/data-service'
 
 interface Reservation {
   id: string
@@ -65,30 +65,22 @@ export default function ManageReservationsPage() {
   }
 
   async function fetchLabs() {
-    const { data } = await supabase
-      .from('activities')
-      .select('id, name')
-      .eq('activity_type', 'lab_session')
-      .order('name')
-    if (data) setLabs(data)
+    const { data, error } = await dataService.fetchLabs()
+    if (data && !error) {
+      const filteredLabs = data
+        .filter(lab => (lab.activity_type as string) === 'lab_session' || !lab.activity_type)
+        .map(lab => ({ id: lab.id as string, name: lab.name as string }))
+      setLabs(filteredLabs)
+    }
   }
 
   async function fetchReservations() {
-    const { data } = await supabase
-      .from('reservations')
-      .select(`
-        *,
-        profiles:user_id(full_name, email),
-        reservation_activities(activities(name)),
-        reservation_equipment(equipment(name, code)),
-        reservation_comments(comment_text)
-      `)
-      .order('requested_at', { ascending: false })
+    const { data, error } = await dataService.fetchReservations()
 
-    if (data) {
-      setReservations(data as Reservation[])
+    if (data && !error) {
+      setReservations(data as unknown as Reservation[])
       if (data.length > 0 && !selectedReservation) {
-        setSelectedReservation(data[0] as Reservation)
+        setSelectedReservation(data[0] as unknown as Reservation)
       }
     }
   }
@@ -98,39 +90,29 @@ export default function ManageReservationsPage() {
 
     setProcessing(true)
 
+    let updates: Record<string, unknown> = {}
+
     if (actionType === 'approve') {
-      const { error } = await supabase
-        .from('reservations')
-        .update({
-          status: 'approved',
-          manager_comments: managerComments
-        })
-        .eq('id', selectedReservation.id)
-
-      if (error) console.error('Error:', error)
+      updates = {
+        status: 'approved',
+        manager_comments: managerComments
+      }
     } else if (actionType === 'reject') {
-      const { error } = await supabase
-        .from('reservations')
-        .update({
-          status: 'rejected',
-          manager_comments: managerComments
-        })
-        .eq('id', selectedReservation.id)
-
-      if (error) console.error('Error:', error)
+      updates = {
+        status: 'rejected',
+        manager_comments: managerComments
+      }
     } else if (actionType === 'suggest') {
-      const { error } = await supabase
-        .from('reservations')
-        .update({
-          status: 'suggested',
-          manager_comments: managerComments,
-          suggested_start_time: suggestion.alternativeStartTime,
-          suggested_end_time: suggestion.alternativeEndTime
-        })
-        .eq('id', selectedReservation.id)
-
-      if (error) console.error('Error:', error)
+      updates = {
+        status: 'suggested',
+        manager_comments: managerComments,
+        suggested_start_time: suggestion.alternativeStartTime,
+        suggested_end_time: suggestion.alternativeEndTime
+      }
     }
+
+    const { error } = await dataService.updateReservation(selectedReservation.id, updates)
+    if (error) console.error('Error:', error)
 
     setProcessing(false)
     setShowDialog(false)
