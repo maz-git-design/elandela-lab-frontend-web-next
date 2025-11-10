@@ -39,6 +39,7 @@ export default function UsersPage() {
   const [cohorts, setCohorts] = useState<Cohort[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -207,12 +208,14 @@ export default function UsersPage() {
   const filteredUsers = users.filter(user => {
     const searchLower = searchTerm.toLowerCase()
     const fullName = `${user.first_name} ${user.last_name}`.toLowerCase()
-    return (
+    const matchesSearch = (
       fullName.includes(searchLower) ||
       user.email.toLowerCase().includes(searchLower) ||
       (user.username && user.username.toLowerCase().includes(searchLower)) ||
       (user.cohorts?.name && user.cohorts.name.toLowerCase().includes(searchLower))
     )
+    const matchesStatus = statusFilter === 'all' || user.status_state === statusFilter
+    return matchesSearch && matchesStatus
   })
 
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
@@ -286,17 +289,33 @@ export default function UsersPage() {
                 <CardTitle>User Directory</CardTitle>
                 <CardDescription>View and manage all system users</CardDescription>
               </div>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="pl-9"
-                />
+              <div className="flex gap-2">
+                <Select value={statusFilter} onValueChange={(value) => {
+                  setStatusFilter(value)
+                  setCurrentPage(1)
+                }}>
+                  <SelectTrigger className="w-40 border-gray-200">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="pl-9"
+                  />
+                </div>
               </div>
             </div>
           </CardHeader>

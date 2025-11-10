@@ -31,6 +31,7 @@ export default function ReservationsPage() {
   const [users, setUsers] = useState<{id: string; email: string; full_name: string | null}[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [showDialog, setShowDialog] = useState(false)
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null)
@@ -137,11 +138,15 @@ export default function ReservationsPage() {
     }
   }
 
-  const filteredReservations = reservations.filter(r =>
-    r.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.equipment?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.purpose?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredReservations = reservations.filter(r => {
+    const matchesSearch = (
+      r.profiles?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.equipment?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.purpose?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    const matchesStatus = statusFilter === 'all' || r.status === statusFilter
+    return matchesSearch && matchesStatus
+  })
 
   const totalPages = Math.ceil(filteredReservations.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
@@ -209,17 +214,34 @@ export default function ReservationsPage() {
                 <CardTitle>All Reservations</CardTitle>
                 <CardDescription>View and manage equipment bookings</CardDescription>
               </div>
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Search reservations..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                  className="pl-10 border-gray-200"
-                />
+              <div className="flex gap-2">
+                <Select value={statusFilter} onValueChange={(value) => {
+                  setStatusFilter(value)
+                  setCurrentPage(1)
+                }}>
+                  <SelectTrigger className="w-40 border-gray-200">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="confirmed">Confirmed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    placeholder="Search reservations..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="pl-10 border-gray-200"
+                  />
+                </div>
               </div>
             </div>
           </CardHeader>

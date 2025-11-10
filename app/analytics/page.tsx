@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BarChart3, TrendingUp, Users, Calendar, Activity } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import { LineChart } from '@/components/charts/line-chart'
+import { BarChart as BarChartComponent } from '@/components/charts/bar-chart'
 
 interface FilterOptions {
   cohorts: Array<{ id: string; name: string }>
@@ -223,37 +225,6 @@ export default function AnalyticsPage() {
     }
   }
 
-  const BarChart = ({ data, title, color }: { data: Record<string, number>; title: string; color: string }) => {
-    if (!title) { /* placeholder */ }
-    const maxValue = Math.max(...Object.values(data), 1)
-    const entries = Object.entries(data).slice(0, 15)
-
-    return (
-      <div className="space-y-3">
-        <h4 className="text-sm font-semibold text-gray-900">{title}</h4>
-        {entries.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-8">No data available</p>
-        ) : (
-          <div className="space-y-2">
-            {entries.map(([key, value]) => (
-              <div key={key}>
-                <div className="flex items-center justify-between text-sm mb-1">
-                  <span className="text-gray-700 truncate flex-1">{key}</span>
-                  <span className="font-semibold text-gray-900 ml-2">{value}</span>
-                </div>
-                <div className="w-full bg-gray-100 rounded-full h-2">
-                  <div
-                    className={`${color} h-2 rounded-full transition-all duration-300`}
-                    style={{ width: `${(value / maxValue) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
 
   const StatCard = ({ title, value, icon: Icon, color, description }: { title: string; value: number; icon: React.ComponentType<{ className?: string }>; color: string; description: string }) => (
     <Card className="border-gray-200">
@@ -485,7 +456,7 @@ export default function AnalyticsPage() {
                       <CardDescription>Distribution across student groups</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <BarChart data={attendanceStats.byCohort} title="" color="bg-blue-500" />
+                      <BarChartComponent data={attendanceStats.byCohort} color="rgb(59, 130, 246)" height={250} />
                     </CardContent>
                   </Card>
 
@@ -495,7 +466,7 @@ export default function AnalyticsPage() {
                       <CardDescription>Most attended activities</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <BarChart data={attendanceStats.byLab} title="" color="bg-purple-500" />
+                      <BarChartComponent data={attendanceStats.byLab} color="rgb(168, 85, 247)" height={250} />
                     </CardContent>
                   </Card>
                 </div>
@@ -509,7 +480,7 @@ export default function AnalyticsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <BarChart data={attendanceStats.byMonth} title="" color="bg-teal-500" />
+                    <LineChart data={attendanceStats.byMonth} color="rgb(20, 184, 166)" height={300} />
                   </CardContent>
                 </Card>
               </>
@@ -561,7 +532,7 @@ export default function AnalyticsPage() {
                       <CardDescription>Most popular equipment</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <BarChart data={reservationStats.byEquipment} title="" color="bg-orange-500" />
+                      <BarChartComponent data={reservationStats.byEquipment} color="rgb(249, 115, 22)" height={250} />
                     </CardContent>
                   </Card>
 
@@ -571,7 +542,7 @@ export default function AnalyticsPage() {
                       <CardDescription>Usage across groups</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <BarChart data={reservationStats.byCohort} title="" color="bg-indigo-500" />
+                      <BarChartComponent data={reservationStats.byCohort} color="rgb(99, 102, 241)" height={250} />
                     </CardContent>
                   </Card>
                 </div>
@@ -585,7 +556,7 @@ export default function AnalyticsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <BarChart data={reservationStats.byMonth} title="" color="bg-pink-500" />
+                    <LineChart data={reservationStats.byMonth} color="rgb(236, 72, 153)" height={300} />
                   </CardContent>
                 </Card>
               </>
