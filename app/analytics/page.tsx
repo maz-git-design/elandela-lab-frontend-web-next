@@ -11,10 +11,11 @@ import { supabase } from '@/lib/supabase/client'
 
 interface FilterOptions {
   cohorts: Array<{ id: string; name: string }>
-  academicYears: Array<{ id: string; starting_year: number; ending_year: number }>
+  academicYears: Array<{ id: string; start_date: string; end_date: string }>
   labs: Array<{ id: string; name: string }>
   activities: Array<{ id: string; name: string }>
   departments: Array<{ id: string; name: string }>
+  users: Array<{ id: string; full_name: string; email: string }>
 }
 
 interface AttendanceStats {
@@ -41,7 +42,9 @@ export default function AnalyticsPage() {
     activity_id: 'all',
     department_id: 'all',
     date_from: '',
-    date_to: ''
+    date_to: '',
+    user_id: 'all',
+    period: 'month' as 'day' | 'month' | 'year'
   })
 
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
@@ -49,7 +52,8 @@ export default function AnalyticsPage() {
     academicYears: [],
     labs: [],
     activities: [],
-    departments: []
+    departments: [],
+    users: []
   })
 
   const [attendanceStats, setAttendanceStats] = useState<AttendanceStats>({
@@ -76,12 +80,13 @@ export default function AnalyticsPage() {
   }, [filters])
 
   const fetchFilterOptions = async () => {
-    const [cohorts, academicYears, labs, activities, departments] = await Promise.all([
+    const [cohorts, academicYears, labs, activities, departments, users] = await Promise.all([
       supabase.from('cohorts').select('id, name').order('name'),
-      supabase.from('academic_years').select('id, starting_year, ending_year').order('starting_year', { ascending: false }),
+      supabase.from('academic_years').select('id, start_date, end_date').order('start_date', { ascending: false }),
       supabase.from('activities').select('id, name').order('name'),
       supabase.from('activities').select('id, name').order('name'),
-      supabase.from('departments').select('id, name').order('name')
+      supabase.from('departments').select('id, name').order('name'),
+      supabase.from('profiles').select('id, full_name, email').order('full_name')
     ])
 
     setFilterOptions({
@@ -89,7 +94,8 @@ export default function AnalyticsPage() {
       academicYears: academicYears.data || [],
       labs: labs.data || [],
       activities: activities.data || [],
-      departments: departments.data || []
+      departments: departments.data || [],
+      users: users.data || []
     })
   }
 
@@ -107,6 +113,9 @@ export default function AnalyticsPage() {
     }
     if (filters.activity_id !== 'all') {
       query = query.eq('activity_id', filters.activity_id)
+    }
+    if (filters.user_id !== 'all') {
+      query = query.eq('user_id', filters.user_id)
     }
     if (filters.date_from) {
       query = query.gte('check_in', filters.date_from)
@@ -131,22 +140,28 @@ export default function AnalyticsPage() {
       }
 
       data.forEach((attendance) => {
-        // By status
         const status = attendance.status || 'unknown'
         stats.byStatus[status] = (stats.byStatus[status] || 0) + 1
 
-        // By cohort
         const cohort = attendance.profiles?.cohorts?.name || 'Unknown'
         stats.byCohort[cohort] = (stats.byCohort[cohort] || 0) + 1
 
-        // By lab/activity
         const activity = attendance.activities?.name || 'Unknown'
         stats.byLab[activity] = (stats.byLab[activity] || 0) + 1
 
-        // By month
         if (attendance.check_in) {
-          const month = new Date(attendance.check_in).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-          stats.byMonth[month] = (stats.byMonth[month] || 0) + 1
+          let periodKey = ''
+          const date = new Date(attendance.check_in)
+
+          if (filters.period === 'day') {
+            periodKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          } else if (filters.period === 'month') {
+            periodKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+          } else if (filters.period === 'year') {
+            periodKey = date.getFullYear().toString()
+          }
+
+          stats.byMonth[periodKey] = (stats.byMonth[periodKey] || 0) + 1
         }
       })
 
@@ -159,6 +174,9 @@ export default function AnalyticsPage() {
 
     if (filters.cohort_id !== 'all') {
       query = query.eq('profiles.cohort_id', filters.cohort_id)
+    }
+    if (filters.user_id !== 'all') {
+      query = query.eq('user_id', filters.user_id)
     }
     if (filters.date_from) {
       query = query.gte('start_time', filters.date_from)
@@ -179,18 +197,25 @@ export default function AnalyticsPage() {
       }
 
       data.forEach((reservation) => {
-        // By status
         const status = reservation.status || 'unknown'
         stats.byStatus[status] = (stats.byStatus[status] || 0) + 1
 
-        // By equipment
         const equipment = reservation.equipment?.name || 'Unknown'
         stats.byEquipment[equipment] = (stats.byEquipment[equipment] || 0) + 1
 
-        // By month
         if (reservation.start_time) {
-          const month = new Date(reservation.start_time).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-          stats.byMonth[month] = (stats.byMonth[month] || 0) + 1
+          let periodKey = ''
+          const date = new Date(reservation.start_time)
+
+          if (filters.period === 'day') {
+            periodKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          } else if (filters.period === 'month') {
+            periodKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+          } else if (filters.period === 'year') {
+            periodKey = date.getFullYear().toString()
+          }
+
+          stats.byMonth[periodKey] = (stats.byMonth[periodKey] || 0) + 1
         }
       })
 
@@ -201,7 +226,7 @@ export default function AnalyticsPage() {
   const BarChart = ({ data, title, color }: { data: Record<string, number>; title: string; color: string }) => {
     if (!title) { /* placeholder */ }
     const maxValue = Math.max(...Object.values(data), 1)
-    const entries = Object.entries(data).slice(0, 10)
+    const entries = Object.entries(data).slice(0, 15)
 
     return (
       <div className="space-y-3">
@@ -259,7 +284,58 @@ export default function AnalyticsPage() {
             <CardDescription>Filter data by various parameters</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Time Period</label>
+                <Select value={filters.period} onValueChange={(value) => setFilters({ ...filters, period: value as 'day' | 'month' | 'year' })}>
+                  <SelectTrigger className="border-gray-200">
+                    <SelectValue placeholder="Select period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="day">Daily</SelectItem>
+                    <SelectItem value="month">Monthly</SelectItem>
+                    <SelectItem value="year">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">User</label>
+                <Select value={filters.user_id} onValueChange={(value) => setFilters({ ...filters, user_id: value })}>
+                  <SelectTrigger className="border-gray-200">
+                    <SelectValue placeholder="All Users" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Users</SelectItem>
+                    {filterOptions.users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.full_name || u.email}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">From Date</label>
+                <input
+                  type="date"
+                  value={filters.date_from}
+                  onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">To Date</label>
+                <input
+                  type="date"
+                  value={filters.date_to}
+                  onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Cohort</label>
                 <Select value={filters.cohort_id} onValueChange={(value) => setFilters({ ...filters, cohort_id: value })}>
@@ -284,7 +360,7 @@ export default function AnalyticsPage() {
                   <SelectContent>
                     <SelectItem value="all">All Years</SelectItem>
                     {filterOptions.academicYears.map((y) => (
-                      <SelectItem key={y.id} value={y.id}>{y.starting_year}-{y.ending_year}</SelectItem>
+                      <SelectItem key={y.id} value={y.id}>{y.start_date}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -319,26 +395,6 @@ export default function AnalyticsPage() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">From Date</label>
-                <input
-                  type="date"
-                  value={filters.date_from}
-                  onChange={(e) => setFilters({ ...filters, date_from: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">To Date</label>
-                <input
-                  type="date"
-                  value={filters.date_to}
-                  onChange={(e) => setFilters({ ...filters, date_to: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
             </div>
             <div className="flex gap-2 mt-4">
               <Button onClick={fetchAnalytics} className="bg-blue-600 hover:bg-blue-700">
@@ -348,7 +404,7 @@ export default function AnalyticsPage() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setFilters({ cohort_id: 'all', academic_year_id: 'all', lab_id: 'all', activity_id: 'all', department_id: 'all', date_from: '', date_to: '' })
+                  setFilters({ cohort_id: 'all', academic_year_id: 'all', lab_id: 'all', activity_id: 'all', department_id: 'all', date_from: '', date_to: '', user_id: 'all', period: 'month' })
                 }}
               >
                 Reset
@@ -431,8 +487,11 @@ export default function AnalyticsPage() {
 
                 <Card className="border-gray-200">
                   <CardHeader>
-                    <CardTitle className="text-lg">Monthly Attendance Trend</CardTitle>
-                    <CardDescription>Attendance patterns over time</CardDescription>
+                    <CardTitle className="text-lg">Attendance Trend Over Time</CardTitle>
+                    <CardDescription>
+                      Attendance evolution by {filters.period === 'day' ? 'day' : filters.period === 'month' ? 'month' : 'year'}
+                      {filters.user_id !== 'all' ? ' for selected user' : ''}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <BarChart data={attendanceStats.byMonth} title="" color="bg-teal-500" />
@@ -504,8 +563,11 @@ export default function AnalyticsPage() {
 
                 <Card className="border-gray-200">
                   <CardHeader>
-                    <CardTitle className="text-lg">Monthly Reservation Trend</CardTitle>
-                    <CardDescription>Booking patterns over time</CardDescription>
+                    <CardTitle className="text-lg">Reservation Trend Over Time</CardTitle>
+                    <CardDescription>
+                      Reservation evolution by {filters.period === 'day' ? 'day' : filters.period === 'month' ? 'month' : 'year'}
+                      {filters.user_id !== 'all' ? ' for selected user' : ''}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <BarChart data={reservationStats.byMonth} title="" color="bg-pink-500" />
