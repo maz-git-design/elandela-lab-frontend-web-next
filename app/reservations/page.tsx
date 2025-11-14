@@ -49,17 +49,14 @@ export default function ReservationsPage() {
       if (profile) {
         setUserRole(profile.role)
         setCurrentUserId(profile.id)
+        await fetchReservations(profile.role, profile.id)
+        await fetchLabs()
+        setLoading(false)
       }
-      await fetchData()
     }
     init()
   }, [])
 
-  async function fetchData() {
-    setLoading(true)
-    await Promise.all([fetchReservations(), fetchLabs()])
-    setLoading(false)
-  }
 
   async function fetchLabs() {
     const { data } = await supabase
@@ -70,7 +67,7 @@ export default function ReservationsPage() {
     if (data) setLabs(data)
   }
 
-  async function fetchReservations() {
+  async function fetchReservations(role?: UserRole, userId?: string) {
     let query = supabase
       .from('reservations')
       .select(`
@@ -82,8 +79,11 @@ export default function ReservationsPage() {
       `)
       .order('requested_at', { ascending: false })
 
-    if (userRole === 'user') {
-      query = query.eq('user_id', currentUserId)
+    const effectiveRole = role || userRole
+    const effectiveUserId = userId || currentUserId
+
+    if (effectiveRole === 'user' && effectiveUserId) {
+      query = query.eq('user_id', effectiveUserId)
     }
 
     const { data, error } = await query

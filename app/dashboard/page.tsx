@@ -47,9 +47,9 @@ export default function DashboardPage() {
       supabase.from('attendance').select('*, activities(name)', { count: 'exact' }),
       supabase.from('attendance').select('id', { count: 'exact' }).gte('check_in', thirtyDaysAgo.toISOString()),
       supabase.from('attendance').select('id', { count: 'exact' }).gte('check_in', sixtyDaysAgo.toISOString()).lt('check_in', thirtyDaysAgo.toISOString()),
-      supabase.from('reservations').select('*, equipment(name)', { count: 'exact' }),
-      supabase.from('reservations').select('id', { count: 'exact' }).gte('start_time', thirtyDaysAgo.toISOString()),
-      supabase.from('reservations').select('id', { count: 'exact' }).gte('start_time', sixtyDaysAgo.toISOString()).lt('start_time', thirtyDaysAgo.toISOString()),
+      supabase.from('reservations').select('*, reservation_equipment(equipment(name))', { count: 'exact' }),
+      supabase.from('reservations').select('id', { count: 'exact' }).gte('desired_start_time', thirtyDaysAgo.toISOString()),
+      supabase.from('reservations').select('id', { count: 'exact' }).gte('desired_start_time', sixtyDaysAgo.toISOString()).lt('desired_start_time', thirtyDaysAgo.toISOString()),
       supabase.from('equipment').select('id', { count: 'exact' }),
       supabase.from('profiles').select('id', { count: 'exact' })
     ])
@@ -87,8 +87,10 @@ export default function DashboardPage() {
     // Top Equipment by reservations
     const equipCounts: Record<string, number> = {}
     reservationsData.data?.forEach((res) => {
-      const equip = res.equipment?.name || 'Unknown'
-      equipCounts[equip] = (equipCounts[equip] || 0) + 1
+      res.reservation_equipment?.forEach((re: { equipment?: { name?: string } }) => {
+        const equip = re.equipment?.name || 'Unknown'
+        equipCounts[equip] = (equipCounts[equip] || 0) + 1
+      })
     })
     const topEquipArray = Object.entries(equipCounts)
       .sort((a, b) => b[1] - a[1])
@@ -108,7 +110,7 @@ export default function DashboardPage() {
 
       const [attCount, resCount] = await Promise.all([
         supabase.from('attendance').select('id', { count: 'exact' }).gte('check_in', monthStart).lte('check_in', monthEnd),
-        supabase.from('reservations').select('id', { count: 'exact' }).gte('start_time', monthStart).lte('start_time', monthEnd)
+        supabase.from('reservations').select('id', { count: 'exact' }).gte('desired_start_time', monthStart).lte('desired_start_time', monthEnd)
       ])
 
       months.push({
@@ -122,12 +124,12 @@ export default function DashboardPage() {
     // Recent activities
     const recentAtt = await supabase
       .from('attendance')
-      .select('*, profiles(first_name, last_name), activities(name)')
+      .select('*, profiles(full_name), activities(name)')
       .order('check_in', { ascending: false })
       .limit(5)
 
     const activities = recentAtt.data?.map((att) => ({
-      user: `${att.profiles?.first_name || ''} ${att.profiles?.last_name || ''}`.trim() || 'Unknown User',
+      user: att.profiles?.full_name || 'Unknown User',
       action: `checked in for ${att.activities?.name || 'Lab Session'}`,
       time: new Date(att.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
       type: 'attendance'
