@@ -30,6 +30,7 @@ import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { getCurrentUserProfile, UserRole, canManageLabs } from '@/lib/auth/roles'
 import { useRouter } from 'next/navigation'
+import { LabCalendar } from '@/components/labs/lab-calendar'
 
 interface Lab {
   id: string
@@ -538,6 +539,10 @@ export default function LabsPage() {
               <Microscope className="w-4 h-4" />
               Labs
             </TabsTrigger>
+            <TabsTrigger value="calendar" className="gap-2">
+              <Calendar className="w-4 h-4" />
+              Calendar
+            </TabsTrigger>
             {canManageLabs(userRole) && (
               <>
                 <TabsTrigger value="equipment" className="gap-2">
@@ -773,6 +778,10 @@ export default function LabsPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="calendar" className="space-y-4">
+            <LabCalendar />
           </TabsContent>
 
           <TabsContent value="equipment" className="space-y-4">
