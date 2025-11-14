@@ -22,7 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
-  Eye
+  Eye,
+  Clock
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -43,6 +44,8 @@ interface Lab {
   lab_status: string | null
   department_id: string | null
   location: string | null
+  opening_hour: string | null
+  closing_hour: string | null
   departments?: { name: string }
 }
 
@@ -654,6 +657,12 @@ export default function LabsPage() {
                               <div className="flex items-center gap-2 text-xs text-gray-500">
                                 <span className="w-3.5 h-3.5 inline-block"></span>
                                 <span>Dept: {lab.departments.name}</span>
+                              </div>
+                            )}
+                            {(lab.opening_hour || lab.closing_hour) && (
+                              <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                <span>Hours: {lab.opening_hour?.slice(0, 5) || '08:00'} - {lab.closing_hour?.slice(0, 5) || '18:00'}</span>
                               </div>
                             )}
                           </div>

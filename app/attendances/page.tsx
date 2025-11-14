@@ -7,10 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { UserCheck, Hand, Camera, QrCode, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, Check, Calendar, Clock } from 'lucide-react'
+import { UserCheck, Hand, Camera, QrCode, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, Check, Calendar, Clock, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { getCurrentUserProfile, UserRole, canManageReservations } from '@/lib/auth/roles'
 import { cn } from '@/lib/utils'
@@ -351,6 +351,10 @@ export default function AttendancesPage() {
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+                  <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
+                </DialogClose>
                 <DialogHeader>
                   <DialogTitle>{editingAttendance ? 'Edit Attendance' : 'Mark Attendance'}</DialogTitle>
                   <DialogDescription>
@@ -567,7 +571,12 @@ export default function AttendancesPage() {
                       />
                     </div>
                   </div>
-                  <DialogFooter>
+                  <DialogFooter className="gap-2">
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline">
+                        Cancel
+                      </Button>
+                    </DialogClose>
                     <Button type="submit" disabled={!selectedUser}>
                       {editingAttendance ? 'Update' : 'Create'}
                     </Button>
