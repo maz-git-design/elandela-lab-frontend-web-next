@@ -11,8 +11,10 @@ import { createClient } from '@/lib/supabase/client'
 import { getDataSourceConfig, setDataSourceConfig, DataSourceType } from '@/lib/config/data-source'
 import { User, Mail, Lock, Save, AlertTriangle, Database, Server, Globe, Settings } from 'lucide-react'
 import { getCurrentUserProfile, UserRole } from '@/lib/auth/roles'
+import { useTranslation } from '@/lib/i18n/use-translation'
 
 export default function SettingsPage() {
+  const { t, language, changeLanguage } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [profile, setProfile] = useState({
@@ -28,7 +30,6 @@ export default function SettingsPage() {
   const [apiUrl, setApiUrl] = useState('')
   const [dataSourceMessage, setDataSourceMessage] = useState('')
   const [userRole, setUserRole] = useState<UserRole>('user')
-  const [language, setLanguage] = useState('en')
   const [ldapConfig, setLdapConfig] = useState({
     server: '',
     port: '389',
@@ -65,9 +66,6 @@ export default function SettingsPage() {
       const config = getDataSourceConfig()
       setDataSource(config.type)
       setApiUrl(config.apiBaseUrl || '')
-
-      const savedLanguage = localStorage.getItem('language') || 'en'
-      setLanguage(savedLanguage)
     }
     init()
   }, [])
@@ -162,9 +160,9 @@ export default function SettingsPage() {
     setDataSourceMessage('Data source configuration saved successfully. Refresh the page to apply changes.')
   }
 
-  const handleLanguageSave = () => {
-    localStorage.setItem('language', language)
-    setMessage('Language preference saved. Refresh the page to apply changes.')
+  const handleLanguageChange = (newLanguage: 'en' | 'fr') => {
+    changeLanguage(newLanguage)
+    setMessage(newLanguage === 'en' ? 'Language preference saved.' : 'Préférence de langue enregistrée.')
   }
 
   const handleLdapSave = () => {
@@ -177,8 +175,8 @@ export default function SettingsPage() {
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Settings</h1>
-          <p className="text-gray-600 mt-1">Manage your account settings and preferences</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">{t('settings', 'title')}</h1>
+          <p className="text-gray-600 mt-1">{t('settings', 'subtitle')}</p>
         </div>
 
         {message && (
@@ -195,15 +193,15 @@ export default function SettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Globe className="h-5 w-5 text-blue-600" />
-              <CardTitle>Language Preference</CardTitle>
+              <CardTitle>{t('settings', 'language')}</CardTitle>
             </div>
-            <CardDescription>Choose your preferred language</CardDescription>
+            <CardDescription>{language === 'en' ? 'Choose your preferred language' : 'Choisissez votre langue préférée'}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="language">Language</Label>
-                <Select value={language} onValueChange={setLanguage}>
+                <Label htmlFor="language">{language === 'en' ? 'Language' : 'Langue'}</Label>
+                <Select value={language} onValueChange={handleLanguageChange}>
                   <SelectTrigger className="border-gray-200">
                     <SelectValue />
                   </SelectTrigger>
@@ -223,11 +221,6 @@ export default function SettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <Button onClick={handleLanguageSave} className="gap-2">
-                <Save className="h-4 w-4" />
-                Save Language Preference
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -407,9 +400,9 @@ export default function SettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-blue-600" />
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle>{t('settings', 'profile')}</CardTitle>
             </div>
-            <CardDescription>Update your personal information</CardDescription>
+            <CardDescription>{language === 'en' ? 'Update your personal information' : 'Mettre à jour vos informations personnelles'}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleProfileUpdate} className="space-y-4">

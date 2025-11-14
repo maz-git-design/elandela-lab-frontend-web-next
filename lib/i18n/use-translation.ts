@@ -1,15 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { translations, Language } from './translations'
+import { translations } from './translations'
+import { useLanguage } from './language-provider'
 
 export function useTranslation() {
-  const [language, setLanguage] = useState<Language>('en')
-
-  useEffect(() => {
-    const savedLanguage = (localStorage.getItem('language') as Language) || 'en'
-    setLanguage(savedLanguage)
-  }, [])
+  const { language, setLanguage } = useLanguage()
 
   const t = (section: keyof typeof translations.en, key: string): string => {
     const sectionTranslations = translations[language][section]
@@ -19,10 +14,5 @@ export function useTranslation() {
     return key
   }
 
-  const changeLanguage = (newLanguage: Language) => {
-    setLanguage(newLanguage)
-    localStorage.setItem('language', newLanguage)
-  }
-
-  return { t, language, changeLanguage }
+  return { t, language, changeLanguage: setLanguage }
 }
