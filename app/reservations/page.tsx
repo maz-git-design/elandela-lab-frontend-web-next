@@ -26,6 +26,7 @@ interface Reservation {
   reservation_equipment?: Array<{ equipment: { name: string; code: string } }>
   reservation_activities?: Array<{ activities: { name: string } }>
   reservation_comments?: Array<{ comment_text: string }>
+  attendance?: unknown
 }
 
 export default function ReservationsPage() {
@@ -75,7 +76,8 @@ export default function ReservationsPage() {
         profiles:user_id(email, full_name),
         reservation_equipment(equipment(name, code)),
         reservation_activities(activities(id, name)),
-        reservation_comments(comment_text)
+        reservation_comments(comment_text),
+        attendance(id, check_in, check_out)
       `)
       .order('requested_at', { ascending: false })
 
@@ -118,7 +120,16 @@ export default function ReservationsPage() {
       equipmentNames.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.motivation?.toLowerCase().includes(searchTerm.toLowerCase())
     )
-    const matchesStatus = statusFilter === 'all' || r.status === statusFilter
+
+    let matchesStatus = statusFilter === 'all' || r.status === statusFilter
+
+    if (statusFilter === 'expired_checkin') {
+      const now = new Date()
+      const endTime = new Date(r.desired_end_time)
+      const attendanceArray = Array.isArray(r.attendance) ? r.attendance : []
+      const hasCheckIn = attendanceArray.some((att: { check_in?: string; check_out?: string | null }) => att.check_in && !att.check_out)
+      matchesStatus = r.status === 'approved' && now > endTime && hasCheckIn
+    }
 
     let matchesLab = labFilter === 'all'
     if (!matchesLab && r.reservation_activities && r.reservation_activities.length > 0) {
@@ -235,6 +246,9 @@ export default function ReservationsPage() {
                     <SelectItem value="confirmed">Confirmed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
+                    {(userRole === 'lab_admin' || userRole === 'super_admin') && (
+                      <SelectItem value="expired_checkin">Expired (Pending Check-Out)</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 <div className="relative w-64">

@@ -6,48 +6,96 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Search, Clock, Calendar, User, CheckCircle, XCircle } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Search, Plus, Clock, Calendar, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { supabase } from '@/lib/supabase/client'
 
-interface ReservationWithDetails {
+interface Attendance {
+  id: string
+  user_id: string
+  activity_id?: string
+  reservation_id?: string
+  check_in: string
+  check_out?: string
+  type: 'manual' | 'face' | 'qr'
+  status: 'present' | 'late' | 'absent'
+  notes?: string
+  profiles?: {
+    full_name: string
+    email: string
+  }
+  activities?: {
+    name: string
+    activity_type: string
+  }
+}
+
+interface ReservationForAttendance {
   id: string
   user_id: string
   desired_start_time: string
   desired_end_time: string
   status: string
-  motivation?: string
   profiles: unknown
   reservation_activities?: unknown
   reservation_equipment?: unknown
   attendance?: unknown
 }
 
-interface AttendanceRecord {
-  id: string
-  user_id: string
-  reservation_id: string
-  check_in: string
-  check_out: string | null
-  status: string
-  profiles: unknown
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'present':
+      return 'bg-green-100 text-green-700 border-green-200'
+    case 'late':
+      return 'bg-yellow-100 text-yellow-700 border-yellow-200'
+    case 'absent':
+      return 'bg-red-100 text-red-700 border-red-200'
+    default:
+      return 'bg-gray-100 text-gray-700 border-gray-200'
+  }
 }
 
 export default function AttendancesPage() {
-  const [reservations, setReservations] = useState<ReservationWithDetails[]>([])
-  const [attendances, setAttendances] = useState<AttendanceRecord[]>([])
+  const [attendances, setAttendances] = useState<Attendance[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('active')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [isMarkAttendanceOpen, setIsMarkAttendanceOpen] = useState(false)
+
+  const [reservations, setReservations] = useState<ReservationForAttendance[]>([])
+  const [reservationSearch, setReservationSearch] = useState('')
+
+  const itemsPerPage = 10
 
   useEffect(() => {
     const init = async () => {
-      await Promise.all([fetchReservations(), fetchRecentAttendances()])
+      await fetchAttendances()
       setLoading(false)
     }
     init()
   }, [])
 
-  const fetchReservations = async () => {
+  const fetchAttendances = async () => {
+    const { data, error } = await supabase
+      .from('attendance')
+      .select(`
+        *,
+        profiles:user_id(full_name, email),
+        activities:activity_id(name, activity_type)
+      `)
+      .order('check_in', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching attendances:', error)
+      return
+    }
+
+    setAttendances(data || [])
+  }
+
+  const fetchReservationsForMarking = async () => {
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
 
     const { data, error } = await supabase
@@ -58,7 +106,6 @@ export default function AttendancesPage() {
         desired_start_time,
         desired_end_time,
         status,
-        motivation,
         profiles:user_id(full_name, email),
         reservation_activities(activities(name)),
         reservation_equipment(equipment(name, code)),
@@ -76,31 +123,7 @@ export default function AttendancesPage() {
     setReservations(data || [])
   }
 
-  const fetchRecentAttendances = async () => {
-    const { data, error } = await supabase
-      .from('attendance')
-      .select(`
-        id,
-        user_id,
-        reservation_id,
-        check_in,
-        check_out,
-        status,
-        profiles:user_id(full_name, email)
-      `)
-      .not('reservation_id', 'is', null)
-      .order('check_in', { ascending: false })
-      .limit(20)
-
-    if (error) {
-      console.error('Error fetching attendances:', error)
-      return
-    }
-
-    setAttendances(data || [])
-  }
-
-  const handleCheckInOut = async (reservation: ReservationWithDetails) => {
+  const handleMarkAttendance = async (reservation: ReservationForAttendance) => {
     const attendanceArray = Array.isArray(reservation.attendance) ? reservation.attendance : []
     const existingAttendance = attendanceArray[0] as { id?: string; check_in?: string; check_out?: string | null } | undefined
     const now = new Date().toISOString()
@@ -138,10 +161,10 @@ export default function AttendancesPage() {
       alert('Check-in successful!')
     }
 
-    await Promise.all([fetchReservations(), fetchRecentAttendances()])
+    await Promise.all([fetchAttendances(), fetchReservationsForMarking()])
   }
 
-  const getReservationStatus = (reservation: ReservationWithDetails) => {
+  const getReservationStatus = (reservation: ReservationForAttendance) => {
     const now = new Date()
     const startTime = new Date(reservation.desired_start_time)
     const endTime = new Date(reservation.desired_end_time)
@@ -167,28 +190,6 @@ export default function AttendancesPage() {
     return { label: 'Upcoming', color: 'bg-gray-100 text-gray-700', action: 'Check In' }
   }
 
-  const filteredReservations = reservations.filter(reservation => {
-    const status = getReservationStatus(reservation)
-    const profile = Array.isArray(reservation.profiles) ? reservation.profiles[0] : reservation.profiles
-    const matchesSearch = searchTerm === '' ||
-      reservation.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (profile?.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (profile?.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
-
-    if (statusFilter === 'active') {
-      return matchesSearch && (status.label === 'Active' || status.label === 'Checked In')
-    }
-    if (statusFilter === 'expired') {
-      const attendanceArray = Array.isArray(reservation.attendance) ? reservation.attendance : []
-      const attendance = attendanceArray[0] as { check_out?: string | null } | undefined
-      return matchesSearch && status.label === 'Expired' && !attendance?.check_out
-    }
-    if (statusFilter === 'completed') {
-      return matchesSearch && status.label === 'Completed'
-    }
-    return matchesSearch
-  })
-
   const formatDateTime = (dateString: string) => {
     return new Date(dateString).toLocaleString('en-US', {
       month: 'short',
@@ -199,12 +200,153 @@ export default function AttendancesPage() {
     })
   }
 
+  const filteredAttendances = attendances.filter(attendance => {
+    const profile = Array.isArray(attendance.profiles) ? attendance.profiles[0] : attendance.profiles
+    const matchesSearch = searchTerm === '' ||
+      (profile?.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (profile?.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+
+    const matchesStatus = statusFilter === 'all' || attendance.status === statusFilter
+
+    return matchesSearch && matchesStatus
+  })
+
+  const filteredReservations = reservations.filter(reservation => {
+    const profile = Array.isArray(reservation.profiles) ? reservation.profiles[0] : reservation.profiles as { full_name?: string; email?: string } | undefined
+    return reservationSearch === '' ||
+      reservation.id.toLowerCase().includes(reservationSearch.toLowerCase()) ||
+      (profile?.full_name?.toLowerCase() || '').includes(reservationSearch.toLowerCase()) ||
+      (profile?.email?.toLowerCase() || '').includes(reservationSearch.toLowerCase())
+  })
+
+  const totalPages = Math.ceil(filteredAttendances.length / itemsPerPage)
+  const paginatedAttendances = filteredAttendances.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Attendance Management</h1>
-          <p className="text-gray-600 mt-2">Manage check-ins and check-outs for approved reservations</p>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Attendance Records</h1>
+            <p className="text-gray-600 mt-2">View and manage attendance records</p>
+          </div>
+          <Dialog open={isMarkAttendanceOpen} onOpenChange={(open) => {
+            setIsMarkAttendanceOpen(open)
+            if (open) {
+              fetchReservationsForMarking()
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Mark Attendance
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Mark Attendance</DialogTitle>
+                <DialogDescription>
+                  Select a reservation to mark check-in or check-out
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Input
+                    type="text"
+                    placeholder="Search by Reservation ID, name, or email..."
+                    value={reservationSearch}
+                    onChange={(e) => setReservationSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  {filteredReservations.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      No approved reservations found
+                    </div>
+                  ) : (
+                    filteredReservations.map((reservation) => {
+                      const status = getReservationStatus(reservation)
+                      const attendanceArray = Array.isArray(reservation.attendance) ? reservation.attendance : []
+                      const existingAttendance = attendanceArray[0] as { id?: string; check_in?: string; check_out?: string | null } | undefined
+                      const profile = Array.isArray(reservation.profiles) ? reservation.profiles[0] : reservation.profiles as { full_name?: string; email?: string } | undefined
+
+                      return (
+                        <Card key={reservation.id} className="hover:shadow-md transition-shadow">
+                          <CardContent className="p-4">
+                            <div className="flex flex-col sm:flex-row gap-4 justify-between">
+                              <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <h3 className="font-semibold">{profile?.full_name}</h3>
+                                  <Badge className={status.color}>{status.label}</Badge>
+                                </div>
+                                <p className="text-sm text-gray-600">{profile?.email}</p>
+                                <p className="text-xs text-gray-500 font-mono">ID: {reservation.id}</p>
+
+                                <div className="flex gap-4 text-xs text-gray-600">
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {formatDateTime(reservation.desired_start_time)}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {formatDateTime(reservation.desired_end_time)}
+                                  </div>
+                                </div>
+
+                                {Array.isArray(reservation.reservation_activities) && reservation.reservation_activities.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {reservation.reservation_activities.map((ra: {activities?: {name?: string}}, idx: number) => (
+                                      <Badge key={idx} variant="outline" className="text-xs">
+                                        {(ra.activities as {name?: string})?.name}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {existingAttendance && existingAttendance.check_in && (
+                                  <div className="bg-gray-50 p-2 rounded text-xs space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <CheckCircle className="h-3 w-3 text-green-600" />
+                                      <span>In: {formatDateTime(existingAttendance.check_in)}</span>
+                                    </div>
+                                    {existingAttendance.check_out && (
+                                      <div className="flex items-center gap-2">
+                                        <XCircle className="h-3 w-3 text-blue-600" />
+                                        <span>Out: {formatDateTime(existingAttendance.check_out)}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center">
+                                {status.action && (
+                                  <Button
+                                    onClick={() => handleMarkAttendance(reservation)}
+                                    variant={status.action === 'Check Out' ? 'destructive' : 'default'}
+                                    size="sm"
+                                  >
+                                    {status.action}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -212,7 +354,7 @@ export default function AttendancesPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <Input
               type="text"
-              placeholder="Search by Reservation ID, name, or email..."
+              placeholder="Search by name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -220,182 +362,124 @@ export default function AttendancesPage() {
           </div>
           <div className="flex gap-2">
             <Button
-              variant={statusFilter === 'active' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('active')}
-            >
-              Active
-            </Button>
-            <Button
-              variant={statusFilter === 'expired' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('expired')}
-            >
-              Expired
-            </Button>
-            <Button
-              variant={statusFilter === 'completed' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('completed')}
-            >
-              Completed
-            </Button>
-            <Button
               variant={statusFilter === 'all' ? 'default' : 'outline'}
               onClick={() => setStatusFilter('all')}
             >
               All
+            </Button>
+            <Button
+              variant={statusFilter === 'present' ? 'default' : 'outline'}
+              onClick={() => setStatusFilter('present')}
+            >
+              Present
+            </Button>
+            <Button
+              variant={statusFilter === 'late' ? 'default' : 'outline'}
+              onClick={() => setStatusFilter('late')}
+            >
+              Late
+            </Button>
+            <Button
+              variant={statusFilter === 'absent' ? 'default' : 'outline'}
+              onClick={() => setStatusFilter('absent')}
+            >
+              Absent
             </Button>
           </div>
         </div>
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Loading reservations...</p>
+            <p className="text-gray-500">Loading attendance records...</p>
           </div>
         ) : (
-          <div className="grid gap-4">
-            {filteredReservations.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <p className="text-gray-500">No reservations found</p>
-                </CardContent>
-              </Card>
-            ) : (
-              filteredReservations.map((reservation) => {
-                const status = getReservationStatus(reservation)
-                const attendanceArray = Array.isArray(reservation.attendance) ? reservation.attendance : []
-                const existingAttendance = attendanceArray[0] as { id?: string; check_in?: string; check_out?: string | null } | undefined
-                const profile = Array.isArray(reservation.profiles) ? reservation.profiles[0] : reservation.profiles
-
-                return (
-                  <Card key={reservation.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col lg:flex-row gap-4 justify-between">
-                        <div className="flex-1 space-y-3">
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-lg">{profile?.full_name}</h3>
-                                <Badge className={status.color}>{status.label}</Badge>
-                              </div>
-                              <p className="text-sm text-gray-600">{profile?.email}</p>
-                              <p className="text-xs text-gray-500 mt-1 font-mono">ID: {reservation.id}</p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-gray-400" />
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Attendance Records</CardTitle>
+                <CardDescription>
+                  {filteredAttendances.length} total records
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Activity/Lab</TableHead>
+                      <TableHead>Check In</TableHead>
+                      <TableHead>Check Out</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedAttendances.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                          No attendance records found
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedAttendances.map((attendance) => {
+                        const profile = Array.isArray(attendance.profiles) ? attendance.profiles[0] : attendance.profiles
+                        const activity = Array.isArray(attendance.activities) ? attendance.activities[0] : attendance.activities
+                        return (
+                          <TableRow key={attendance.id}>
+                            <TableCell>
                               <div>
-                                <p className="text-gray-500">Start Time</p>
-                                <p className="font-medium">{formatDateTime(reservation.desired_start_time)}</p>
+                                <p className="font-medium">{profile?.full_name}</p>
+                                <p className="text-sm text-gray-600">{profile?.email}</p>
                               </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-gray-400" />
-                              <div>
-                                <p className="text-gray-500">End Time</p>
-                                <p className="font-medium">{formatDateTime(reservation.desired_end_time)}</p>
-                              </div>
-                            </div>
-                          </div>
+                            </TableCell>
+                            <TableCell>
+                              {activity?.name || 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              {formatDateTime(attendance.check_in)}
+                            </TableCell>
+                            <TableCell>
+                              {attendance.check_out ? formatDateTime(attendance.check_out) : '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(attendance.status)}>
+                                {attendance.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
 
-                          {Array.isArray(reservation.reservation_activities) && reservation.reservation_activities.length > 0 && (
-                            <div>
-                              <p className="text-xs text-gray-500 mb-1">Labs/Activities:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {reservation.reservation_activities.map((ra: {activities?: {name?: string}}, idx: number) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">
-                                    {(ra.activities as {name?: string})?.name}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {Array.isArray(reservation.reservation_equipment) && reservation.reservation_equipment.length > 0 && (
-                            <div>
-                              <p className="text-xs text-gray-500 mb-1">Equipment:</p>
-                              <div className="flex flex-wrap gap-1">
-                                {reservation.reservation_equipment.map((re: {equipment?: {name?: string; code?: string}}, idx: number) => (
-                                  <Badge key={idx} variant="outline" className="text-xs">
-                                    {(re.equipment as {name?: string; code?: string})?.name} ({(re.equipment as {name?: string; code?: string})?.code})
-                                  </Badge>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {existingAttendance && existingAttendance.check_in && (
-                            <div className="bg-gray-50 p-3 rounded-lg space-y-1">
-                              <div className="flex items-center gap-2 text-sm">
-                                <CheckCircle className="h-4 w-4 text-green-600" />
-                                <span className="font-medium">Checked In:</span>
-                                <span>{formatDateTime(existingAttendance.check_in)}</span>
-                              </div>
-                              {existingAttendance.check_out && (
-                                <div className="flex items-center gap-2 text-sm">
-                                  <XCircle className="h-4 w-4 text-blue-600" />
-                                  <span className="font-medium">Checked Out:</span>
-                                  <span>{formatDateTime(existingAttendance.check_out)}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col justify-center gap-2">
-                          {status.action && (
-                            <Button
-                              onClick={() => handleCheckInOut(reservation)}
-                              className="w-full lg:w-32"
-                              variant={status.action === 'Check Out' ? 'destructive' : 'default'}
-                            >
-                              {status.action}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })
-            )}
-          </div>
-        )}
-
-        {statusFilter === 'active' && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Attendance Activity</CardTitle>
-              <CardDescription>Latest check-ins and check-outs</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {attendances.slice(0, 5).map((attendance) => {
-                  const attProfile = Array.isArray(attendance.profiles) ? attendance.profiles[0] : attendance.profiles as { full_name?: string; email?: string } | undefined
-                  return (
-                  <div key={attendance.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                    <div className="flex items-center gap-3">
-                      <User className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <p className="font-medium text-sm">{attProfile?.full_name}</p>
-                        <p className="text-xs text-gray-500">{attProfile?.email}</p>
-                      </div>
-                    </div>
-                    <div className="text-right text-xs">
-                      <p className="text-gray-500">In: {formatDateTime(attendance.check_in)}</p>
-                      {attendance.check_out && (
-                        <p className="text-gray-500">Out: {formatDateTime(attendance.check_out)}</p>
-                      )}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4">
+                    <p className="text-sm text-gray-600">
+                      Page {currentPage} of {totalPages}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  )
-                })}
-                {attendances.length === 0 && (
-                  <p className="text-center text-gray-500 py-4">No recent activity</p>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </>
         )}
       </div>
     </DashboardLayout>
