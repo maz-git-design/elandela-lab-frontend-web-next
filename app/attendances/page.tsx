@@ -9,13 +9,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { UserCheck, Hand, Camera, QrCode, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { UserCheck, Hand, Camera, QrCode, Plus, Search, Edit, Trash2, ChevronLeft, ChevronRight, Check, Calendar, Clock } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import { getCurrentUserProfile, UserRole, canManageReservations } from '@/lib/auth/roles'
+import { cn } from '@/lib/utils'
 
 interface Attendance {
   id: string
   user_id: string
   activity_id?: string
+  reservation_id?: string
   check_in: string
   check_out?: string
   type: 'manual' | 'face' | 'qr'
@@ -34,12 +38,22 @@ interface Attendance {
 interface User {
   id: string
   full_name: string
+  email: string
 }
 
 interface Activity {
   id: string
   name: string
   activity_type: string
+}
+
+interface Reservation {
+  id: string
+  desired_start_time: string
+  desired_end_time: string
+  status: string
+  reservation_activities?: Array<{ activities: Array<{ name: string }> }>
+  reservation_equipment?: Array<{ equipment: Array<{ name: string }> }>
 }
 
 function getStatusColor(status: string) {
@@ -72,16 +86,23 @@ export default function AttendancesPage() {
   const [attendances, setAttendances] = useState<Attendance[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [activities, setActivities] = useState<Activity[]>([])
+  const [userReservations, setUserReservations] = useState<Reservation[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingAttendance, setEditingAttendance] = useState<Attendance | null>(null)
+  const [userRole, setUserRole] = useState<UserRole>('user')
   const itemsPerPage = 10
+
+  const [userSearchQuery, setUserSearchQuery] = useState('')
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [selectedReservation, setSelectedReservation] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
     user_id: '',
     activity_id: '',
+    reservation_id: '',
     check_in: new Date().toISOString(),
     check_out: '',
     type: 'manual' as 'manual' | 'face' | 'qr',
@@ -90,9 +111,14 @@ export default function AttendancesPage() {
   })
 
   useEffect(() => {
-    fetchAttendances()
-    fetchUsers()
-    fetchActivities()
+    const init = async () => {
+      const profile = await getCurrentUserProfile()
+      if (profile) {
+        setUserRole(profile.role)
+      }
+      await Promise.all([fetchAttendances(), fetchUsers(), fetchActivities()])
+    }
+    init()
   }, [])
 
   const fetchAttendances = async () => {
@@ -116,7 +142,7 @@ export default function AttendancesPage() {
   const fetchUsers = async () => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, email')
       .order('full_name')
 
     if (error) {
@@ -140,6 +166,29 @@ export default function AttendancesPage() {
     }
 
     setActivities(data || [])
+  }
+
+  const fetchUserReservations = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('reservations')
+      .select(`
+        id,
+        desired_start_time,
+        desired_end_time,
+        status,
+        reservation_activities(activities(name)),
+        reservation_equipment(equipment(name))
+      `)
+      .eq('user_id', userId)
+      .in('status', ['approved', 'confirmed', 'pending'])
+      .order('desired_start_time', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching user reservations:', error)
+      return
+    }
+
+    setUserReservations(data || [])
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -177,6 +226,7 @@ export default function AttendancesPage() {
     setFormData({
       user_id: attendance.user_id,
       activity_id: attendance.activity_id || '',
+      reservation_id: attendance.reservation_id || '',
       check_in: attendance.check_in,
       check_out: attendance.check_out || '',
       type: attendance.type,
@@ -206,13 +256,45 @@ export default function AttendancesPage() {
     setFormData({
       user_id: '',
       activity_id: '',
+      reservation_id: '',
       check_in: new Date().toISOString(),
       check_out: '',
       type: 'manual',
       status: 'present',
       notes: ''
     })
+    setSelectedUser(null)
+    setSelectedReservation(null)
+    setUserReservations([])
   }
+
+  const handleUserSelect = async (user: User) => {
+    setSelectedUser(user)
+    setFormData({ ...formData, user_id: user.id })
+    await fetchUserReservations(user.id)
+  }
+
+  const handleReservationSelect = (reservationId: string) => {
+    setSelectedReservation(reservationId)
+    const reservation = userReservations.find(r => r.id === reservationId)
+    if (reservation && reservation.reservation_activities && reservation.reservation_activities.length > 0) {
+      const activities_arr = reservation.reservation_activities[0].activities
+      if (activities_arr.length > 0) {
+        const activityName = activities_arr[0].name
+        const activity = activities.find(a => a.name === activityName)
+        if (activity) {
+          setFormData({ ...formData, reservation_id: reservationId, activity_id: activity.id })
+        }
+      }
+    } else {
+      setFormData({ ...formData, reservation_id: reservationId })
+    }
+  }
+
+  const filteredUsers = users.filter(user =>
+    user.full_name.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(userSearchQuery.toLowerCase())
+  )
 
   const filteredAttendances = attendances.filter(attendance => {
     const searchLower = searchTerm.toLowerCase()
@@ -239,6 +321,13 @@ export default function AttendancesPage() {
     absent: attendances.filter(a => a.status === 'absent').length
   }
 
+  const isReservationActive = (reservation: Reservation) => {
+    const now = new Date()
+    const startTime = new Date(reservation.desired_start_time)
+    const endTime = new Date(reservation.desired_end_time)
+    return now >= startTime && now <= endTime
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -247,142 +336,246 @@ export default function AttendancesPage() {
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">Attendances</h1>
             <p className="text-gray-600 mt-1">Track and manage attendance records</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open)
-            if (!open) {
-              setEditingAttendance(null)
-              resetForm()
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Mark Attendance
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>{editingAttendance ? 'Edit Attendance' : 'Mark Attendance'}</DialogTitle>
-                <DialogDescription>
-                  {editingAttendance ? 'Update attendance record details' : 'Record new attendance entry'}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit}>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="user_id">User</Label>
-                    <Select
-                      value={formData.user_id}
-                      onValueChange={(value) => setFormData({ ...formData, user_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select user" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {users.map((user) => (
-                          <SelectItem key={user.id} value={user.id}>
-                            {user.full_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="activity_id">Lab/Activity</Label>
-                    <Select
-                      value={formData.activity_id}
-                      onValueChange={(value) => setFormData({ ...formData, activity_id: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select lab or activity" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activities.map((activity) => (
-                          <SelectItem key={activity.id} value={activity.id}>
-                            {activity.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+          {canManageReservations(userRole) && (
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open)
+              if (!open) {
+                setEditingAttendance(null)
+                resetForm()
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Mark Attendance
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingAttendance ? 'Edit Attendance' : 'Mark Attendance'}</DialogTitle>
+                  <DialogDescription>
+                    {editingAttendance ? 'Update attendance record details' : 'Record new attendance entry'}
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit}>
+                  <div className="space-y-4 py-4">
                     <div className="space-y-2">
-                      <Label htmlFor="check_in">Check In</Label>
-                      <Input
-                        id="check_in"
-                        type="datetime-local"
-                        value={formData.check_in ? new Date(formData.check_in).toISOString().slice(0, 16) : ''}
-                        onChange={(e) => setFormData({ ...formData, check_in: new Date(e.target.value).toISOString() })}
-                        required
-                      />
+                      <Label>Select User</Label>
+                      <div className="relative">
+                        {selectedUser ? (
+                          <div className="flex items-center justify-between p-3 border border-gray-300 rounded-lg bg-gray-50">
+                            <div>
+                              <p className="font-medium text-gray-900">{selectedUser.full_name}</p>
+                              <p className="text-sm text-gray-600">{selectedUser.email}</p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedUser(null)
+                                setUserReservations([])
+                                setSelectedReservation(null)
+                                setFormData({ ...formData, user_id: '', reservation_id: '', activity_id: '' })
+                              }}
+                            >
+                              Change
+                            </Button>
+                          </div>
+                        ) : (
+                          <Command className="border rounded-lg">
+                            <CommandInput
+                              placeholder="Search users by name or email..."
+                              value={userSearchQuery}
+                              onValueChange={setUserSearchQuery}
+                            />
+                            <CommandList>
+                              <CommandEmpty>No users found.</CommandEmpty>
+                              <CommandGroup>
+                                {filteredUsers.slice(0, 8).map((user) => (
+                                  <CommandItem
+                                    key={user.id}
+                                    onSelect={() => handleUserSelect(user)}
+                                    className="cursor-pointer"
+                                  >
+                                    <div className="flex flex-col">
+                                      <span className="font-medium">{user.full_name}</span>
+                                      <span className="text-sm text-gray-600">{user.email}</span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedUser && userReservations.length > 0 && (
+                      <div className="space-y-2">
+                        <Label>Select Reservation (Optional)</Label>
+                        <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
+                          {userReservations.map((reservation) => {
+                            const isActive = isReservationActive(reservation)
+                            const isSelected = selectedReservation === reservation.id
+                            return (
+                              <div
+                                key={reservation.id}
+                                onClick={() => handleReservationSelect(reservation.id)}
+                                className={cn(
+                                  "relative p-4 border-2 rounded-lg cursor-pointer transition-all",
+                                  isSelected ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300",
+                                  isActive && "ring-2 ring-green-500 ring-opacity-50"
+                                )}
+                              >
+                                {isSelected && (
+                                  <div className="absolute top-2 right-2">
+                                    <Check className="h-5 w-5 text-blue-600" />
+                                  </div>
+                                )}
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge className={isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                                        {isActive ? 'Active Now' : 'Inactive'}
+                                      </Badge>
+                                      <Badge variant="outline" className="capitalize">
+                                        {reservation.status}
+                                      </Badge>
+                                    </div>
+                                    {reservation.reservation_activities && reservation.reservation_activities.length > 0 && reservation.reservation_activities[0].activities.length > 0 && (
+                                      <p className="font-medium text-gray-900 mb-1">
+                                        {reservation.reservation_activities[0].activities[0].name}
+                                      </p>
+                                    )}
+                                    {reservation.reservation_equipment && reservation.reservation_equipment.length > 0 && (
+                                      <p className="text-sm text-gray-600 mb-2">
+                                        Equipment: {reservation.reservation_equipment.map(re => re.equipment.length > 0 ? re.equipment[0].name : '').filter(Boolean).join(', ')}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                                      <div className="flex items-center gap-1">
+                                        <Calendar className="h-3 w-3" />
+                                        {new Date(reservation.desired_start_time).toLocaleDateString()}
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        {new Date(reservation.desired_start_time).toLocaleTimeString()} - {new Date(reservation.desired_end_time).toLocaleTimeString()}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedUser && userReservations.length === 0 && (
+                      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800">This user has no active reservations</p>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label htmlFor="activity_id">Lab/Activity</Label>
+                      <Select
+                        value={formData.activity_id}
+                        onValueChange={(value) => setFormData({ ...formData, activity_id: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select lab or activity" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activities.map((activity) => (
+                            <SelectItem key={activity.id} value={activity.id}>
+                              {activity.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="check_in">Check In</Label>
+                        <Input
+                          id="check_in"
+                          type="datetime-local"
+                          value={formData.check_in ? new Date(formData.check_in).toISOString().slice(0, 16) : ''}
+                          onChange={(e) => setFormData({ ...formData, check_in: new Date(e.target.value).toISOString() })}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="check_out">Check Out</Label>
+                        <Input
+                          id="check_out"
+                          type="datetime-local"
+                          value={formData.check_out ? new Date(formData.check_out).toISOString().slice(0, 16) : ''}
+                          onChange={(e) => setFormData({ ...formData, check_out: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="type">Type</Label>
+                        <Select
+                          value={formData.type}
+                          onValueChange={(value) => setFormData({ ...formData, type: value as 'manual' | 'face' | 'qr' })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="manual">Manual</SelectItem>
+                            <SelectItem value="face">Face Recognition</SelectItem>
+                            <SelectItem value="qr">QR Code</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="status">Status</Label>
+                        <Select
+                          value={formData.status}
+                          onValueChange={(value) => setFormData({ ...formData, status: value as 'present' | 'late' | 'absent' })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="present">Present</SelectItem>
+                            <SelectItem value="late">Late</SelectItem>
+                            <SelectItem value="absent">Absent</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="check_out">Check Out</Label>
-                      <Input
-                        id="check_out"
-                        type="datetime-local"
-                        value={formData.check_out ? new Date(formData.check_out).toISOString().slice(0, 16) : ''}
-                        onChange={(e) => setFormData({ ...formData, check_out: e.target.value ? new Date(e.target.value).toISOString() : '' })}
+                      <Label htmlFor="notes">Notes</Label>
+                      <textarea
+                        id="notes"
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        placeholder="Add any additional notes about this attendance record..."
+                        className="w-full min-h-[100px] p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="type">Type</Label>
-                    <Select
-                      value={formData.type}
-                      onValueChange={(value) => setFormData({ ...formData, type: value as 'manual' | 'face' | 'qr' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="manual">Manual</SelectItem>
-                        <SelectItem value="face">Face Recognition</SelectItem>
-                        <SelectItem value="qr">QR Code</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value) => setFormData({ ...formData, status: value as 'present' | 'late' | 'absent' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="present">Present</SelectItem>
-                        <SelectItem value="late">Late</SelectItem>
-                        <SelectItem value="absent">Absent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes (Optional)</Label>
-                    <textarea
-                      id="notes"
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      placeholder="Add any additional notes..."
-                      className="w-full min-h-[80px] p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="submit">
-                    {editingAttendance ? 'Update' : 'Create'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <DialogFooter>
+                    <Button type="submit" disabled={!selectedUser}>
+                      {editingAttendance ? 'Update' : 'Create'}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">
@@ -487,7 +680,9 @@ export default function AttendancesPage() {
                     <th className="px-6 py-3 border-b border-gray-300">Check Out</th>
                     <th className="px-6 py-3 border-b border-gray-300">Type</th>
                     <th className="px-6 py-3 border-b border-gray-300">Status</th>
-                    <th className="px-6 py-3 border-b border-gray-300">Actions</th>
+                    {canManageReservations(userRole) && (
+                      <th className="px-6 py-3 border-b border-gray-300">Actions</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -519,24 +714,26 @@ export default function AttendancesPage() {
                             {attendance.status}
                           </Badge>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(attendance)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(attendance.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-600" />
-                            </Button>
-                          </div>
-                        </td>
+                        {canManageReservations(userRole) && (
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEdit(attendance)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(attendance.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
