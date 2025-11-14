@@ -20,11 +20,14 @@ import {
   MapPin,
   Users,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Calendar
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { getCurrentUserProfile, UserRole, canManageLabs } from '@/lib/auth/roles'
+import { useRouter } from 'next/navigation'
 
 interface Lab {
   id: string
@@ -67,10 +70,12 @@ interface EquipmentCategory {
 }
 
 export default function LabsPage() {
+  const router = useRouter()
   const [labs, setLabs] = useState<Lab[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [categories, setCategories] = useState<EquipmentCategory[]>([])
   const [loading, setLoading] = useState(true)
+  const [userRole, setUserRole] = useState<UserRole>('user')
 
   const [showLabDialog, setShowLabDialog] = useState(false)
   const [showEquipmentDialog, setShowEquipmentDialog] = useState(false)
@@ -121,7 +126,14 @@ export default function LabsPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    fetchAllData()
+    const init = async () => {
+      const profile = await getCurrentUserProfile()
+      if (profile) {
+        setUserRole(profile.role)
+      }
+      fetchAllData()
+    }
+    init()
   }, [])
 
   async function fetchAllData() {
@@ -386,14 +398,18 @@ export default function LabsPage() {
               <Microscope className="w-4 h-4" />
               Labs
             </TabsTrigger>
-            <TabsTrigger value="equipment" className="gap-2">
-              <Package className="w-4 h-4" />
-              Equipment
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="gap-2">
-              <Wrench className="w-4 h-4" />
-              Categories
-            </TabsTrigger>
+            {canManageLabs(userRole) && (
+              <>
+                <TabsTrigger value="equipment" className="gap-2">
+                  <Package className="w-4 h-4" />
+                  Equipment
+                </TabsTrigger>
+                <TabsTrigger value="categories" className="gap-2">
+                  <Wrench className="w-4 h-4" />
+                  Categories
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <TabsContent value="labs" className="space-y-4">
@@ -417,18 +433,20 @@ export default function LabsPage() {
                         className="pl-10 border-gray-200"
                       />
                     </div>
-                    <div className="flex gap-2">
-                      <Link href="/labs/manage">
-                        <Button variant="outline">
-                          <Package className="w-4 h-4 mr-2" />
-                          Manage Lab
+                    {canManageLabs(userRole) && (
+                      <div className="flex gap-2">
+                        <Link href="/labs/manage">
+                          <Button variant="outline">
+                            <Package className="w-4 h-4 mr-2" />
+                            Manage Lab
+                          </Button>
+                        </Link>
+                        <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Lab
                         </Button>
-                      </Link>
-                      <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Lab
-                      </Button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -441,11 +459,13 @@ export default function LabsPage() {
                   <div className="text-center py-12">
                     <Microscope className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No labs found</h3>
-                    <p className="text-gray-600 mb-4">Create your first lab to get started</p>
-                    <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Lab
-                    </Button>
+                    <p className="text-gray-600 mb-4">{canManageLabs(userRole) ? 'Create your first lab to get started' : 'No labs available at the moment'}</p>
+                    {canManageLabs(userRole) && (
+                      <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Lab
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <>
@@ -501,27 +521,40 @@ export default function LabsPage() {
                         </div>
 
                         <div className="bg-gray-50 px-5 py-3 flex gap-2 border-t border-gray-100">
-                          <Link href="/labs/manage">
+                          {userRole === 'user' ? (
                             <Button
                               variant="default"
                               size="sm"
-                              className="w-24"
+                              className="flex-1"
+                              onClick={() => router.push(`/reservations/request?lab=${lab.id}`)}
                             >
-                              <Package className="w-3.5 h-3.5 mr-1.5" />
-                              Manage
+                              <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                              Create Reservation
                             </Button>
-                          </Link>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingLab(lab)
-                              setLabForm({
-                                name: lab.name,
-                                code: lab.code || '',
-                                description: lab.description || '',
-                                building: lab.building || '',
-                                room_number: lab.room_number || '',
+                          ) : (
+                            <>
+                              <Link href="/labs/manage">
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="w-24"
+                                >
+                                  <Package className="w-3.5 h-3.5 mr-1.5" />
+                                  Manage
+                                </Button>
+                              </Link>
+                              {canManageLabs(userRole) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingLab(lab)
+                                    setLabForm({
+                                      name: lab.name,
+                                      code: lab.code || '',
+                                      description: lab.description || '',
+                                      building: lab.building || '',
+                                      room_number: lab.room_number || '',
                                 floor: lab.floor || 1,
                                 capacity_users: lab.capacity_users || 30,
                                 capacity_equipment: lab.capacity_equipment || 20,
@@ -534,14 +567,19 @@ export default function LabsPage() {
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteLab(lab.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                              )}
+                              {userRole === 'super_admin' && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteLab(lab.id)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
