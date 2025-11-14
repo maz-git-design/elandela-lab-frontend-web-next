@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Breadcrumb } from '@/components/ui/breadcrumb'
 import { Check, X, Clock, Calendar, User, Package, AlertCircle, MessageSquare } from 'lucide-react'
 import { dataService } from '@/lib/services/data-service'
+import { supabase } from '@/lib/supabase/client'
+import { getCurrentUserProfile } from '@/lib/auth/roles'
 
 interface Reservation {
   id: string
@@ -75,6 +77,42 @@ export default function ManageReservationsPage() {
   }
 
   async function fetchReservations() {
+    const profile = await getCurrentUserProfile()
+
+    if (profile?.role === 'lab_admin') {
+      const { data: labManagerData } = await supabase
+        .from('lab_managers')
+        .select('lab_id')
+        .eq('user_id', profile.id)
+        .single()
+
+      if (labManagerData) {
+        const { data, error } = await supabase
+          .from('reservations')
+          .select(`
+            *,
+            profiles:user_id (full_name, email),
+            reservation_activities!inner (
+              activities!inner (id, name)
+            ),
+            reservation_equipment (
+              equipment (name, code)
+            ),
+            reservation_comments (comment_text)
+          `)
+          .eq('reservation_activities.activity_id', labManagerData.lab_id)
+          .order('requested_at', { ascending: false })
+
+        if (data && !error) {
+          setReservations(data as unknown as Reservation[])
+          if (data.length > 0 && !selectedReservation) {
+            setSelectedReservation(data[0] as unknown as Reservation)
+          }
+        }
+        return
+      }
+    }
+
     const { data, error } = await dataService.fetchReservations()
 
     if (data && !error) {

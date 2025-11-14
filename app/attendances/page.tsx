@@ -442,12 +442,12 @@ export default function AttendancesPage() {
               <CardContent>
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Activity/Lab</TableHead>
-                      <TableHead>Check In</TableHead>
-                      <TableHead>Check Out</TableHead>
-                      <TableHead>Status</TableHead>
+                    <TableRow className="bg-gray-50 border-b border-gray-200">
+                      <TableHead className="font-semibold text-gray-700">User</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Activity/Lab</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Check In</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Check Out</TableHead>
+                      <TableHead className="font-semibold text-gray-700">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -491,7 +491,7 @@ export default function AttendancesPage() {
                 </Table>
 
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
                     <p className="text-sm text-gray-600">
                       Page {currentPage} of {totalPages}
                     </p>
