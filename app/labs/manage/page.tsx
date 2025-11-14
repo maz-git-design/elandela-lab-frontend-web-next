@@ -80,8 +80,15 @@ export default function LabManagementPage() {
       const profile = await getCurrentUserProfile()
       if (profile) {
         setUserRole(profile.role)
-        if (profile.role === 'lab_admin' && profile.managed_labs) {
-          setManagedLabIds(profile.managed_labs)
+        if (profile.role === 'lab_admin') {
+          const { data: labManagerData } = await supabase
+            .from('lab_managers')
+            .select('lab_id')
+            .eq('user_id', profile.id)
+
+          if (labManagerData) {
+            setManagedLabIds(labManagerData.map(lm => lm.lab_id))
+          }
         }
       }
       await fetchLabs()
@@ -136,22 +143,27 @@ export default function LabManagementPage() {
     const { data } = await supabase
       .from('equipment')
       .select('*, equipment_categories(name)')
-      .eq('location', selectedLab.name)
+      .eq('current_lab_id', selectedLab.id)
       .order('name')
 
     setEquipment(data || [])
   }
 
   const handleSaveEquipment = async () => {
-    if (!equipmentForm.name || !equipmentForm.code) return
+    if (!equipmentForm.name || !equipmentForm.code || !selectedLab) return
+
+    const equipmentData = {
+      ...equipmentForm,
+      current_lab_id: selectedLab.id
+    }
 
     if (editingEquipment) {
       await supabase
         .from('equipment')
-        .update(equipmentForm)
+        .update(equipmentData)
         .eq('id', editingEquipment.id)
     } else {
-      await supabase.from('equipment').insert(equipmentForm)
+      await supabase.from('equipment').insert(equipmentData)
     }
 
     setShowEquipmentDialog(false)

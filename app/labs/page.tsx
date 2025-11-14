@@ -76,6 +76,8 @@ export default function LabsPage() {
   const [categories, setCategories] = useState<EquipmentCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [userRole, setUserRole] = useState<UserRole>('user')
+  const [myLab, setMyLab] = useState<Lab | null>(null)
+  const [myLabEquipment, setMyLabEquipment] = useState<Equipment[]>([])
 
   const [showLabDialog, setShowLabDialog] = useState(false)
   const [showEquipmentDialog, setShowEquipmentDialog] = useState(false)
@@ -130,6 +132,9 @@ export default function LabsPage() {
       const profile = await getCurrentUserProfile()
       if (profile) {
         setUserRole(profile.role)
+        if (profile.role === 'lab_admin') {
+          await fetchMyLab(profile.id)
+        }
       }
       fetchAllData()
     }
@@ -144,6 +149,54 @@ export default function LabsPage() {
       fetchCategories()
     ])
     setLoading(false)
+  }
+
+  async function fetchMyLab(userId: string) {
+    const { data: labManagerData, error: labManagerError } = await supabase
+      .from('lab_managers')
+      .select('lab_id')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (labManagerError) {
+      console.error('Error fetching lab manager data:', labManagerError)
+      return
+    }
+
+    if (labManagerData) {
+      const { data: labData, error: labError } = await supabase
+        .from('activities')
+        .select(`
+          *,
+          departments(name)
+        `)
+        .eq('id', labManagerData.lab_id)
+        .maybeSingle()
+
+      if (labError) {
+        console.error('Error fetching lab:', labError)
+        return
+      }
+
+      if (labData) {
+        setMyLab(labData as Lab)
+
+        const { data: equipmentData, error: equipmentError } = await supabase
+          .from('equipment')
+          .select(`
+            *,
+            equipment_categories(name)
+          `)
+          .eq('current_lab_id', labData.id)
+          .order('name')
+
+        if (equipmentError) {
+          console.error('Error fetching my lab equipment:', equipmentError)
+        } else {
+          setMyLabEquipment(equipmentData as Equipment[])
+        }
+      }
+    }
   }
 
   async function fetchLabs() {
@@ -336,6 +389,85 @@ export default function LabsPage() {
           <p className="text-gray-600 mt-1">Manage laboratory facilities and equipment inventory</p>
         </div>
 
+        {userRole === 'lab_admin' && myLab && (
+          <Card className="border-blue-200 bg-blue-50/50">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl">My Lab</CardTitle>
+                  <CardDescription>Your managed laboratory</CardDescription>
+                </div>
+                <Button
+                  onClick={() => router.push('/labs/manage')}
+                  className="gap-2"
+                >
+                  <Wrench className="h-4 w-4" />
+                  Manage Equipment
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-semibold text-lg mb-2">{myLab.name}</h3>
+                  {myLab.code && <p className="text-sm text-gray-600 mb-1">Code: {myLab.code}</p>}
+                  {myLab.description && <p className="text-gray-700 mb-3">{myLab.description}</p>}
+                  <div className="space-y-2 text-sm">
+                    {myLab.building && (
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <MapPin className="h-4 w-4" />
+                        <span>{myLab.building} {myLab.room_number && `- Room ${myLab.room_number}`}</span>
+                      </div>
+                    )}
+                    {myLab.capacity_users && (
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Users className="h-4 w-4" />
+                        <span>Capacity: {myLab.capacity_users} users</span>
+                      </div>
+                    )}
+                    {myLab.lab_status && (
+                      <Badge className={
+                        myLab.lab_status === 'active' ? 'bg-green-100 text-green-700' :
+                        myLab.lab_status === 'under_maintenance' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }>
+                        {myLab.lab_status.replace('_', ' ')}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold mb-3">Equipment Summary</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-3 bg-white rounded-lg border">
+                      <span className="text-sm font-medium">Total Equipment</span>
+                      <span className="text-lg font-bold text-blue-600">{myLabEquipment.length}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-white rounded-lg border">
+                      <span className="text-sm font-medium">Available</span>
+                      <span className="text-lg font-bold text-green-600">
+                        {myLabEquipment.filter(e => e.current_status === 'available').length}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-white rounded-lg border">
+                      <span className="text-sm font-medium">In Use</span>
+                      <span className="text-lg font-bold text-orange-600">
+                        {myLabEquipment.filter(e => e.current_status === 'in_use').length}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-white rounded-lg border">
+                      <span className="text-sm font-medium">Under Maintenance</span>
+                      <span className="text-lg font-bold text-red-600">
+                        {myLabEquipment.filter(e => e.current_status === 'under_maintenance').length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="border-gray-200">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -441,10 +573,12 @@ export default function LabsPage() {
                             Manage Lab
                           </Button>
                         </Link>
-                        <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Lab
-                        </Button>
+                        {userRole === 'super_admin' && (
+                          <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Lab
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -459,8 +593,8 @@ export default function LabsPage() {
                   <div className="text-center py-12">
                     <Microscope className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No labs found</h3>
-                    <p className="text-gray-600 mb-4">{canManageLabs(userRole) ? 'Create your first lab to get started' : 'No labs available at the moment'}</p>
-                    {canManageLabs(userRole) && (
+                    <p className="text-gray-600 mb-4">{userRole === 'super_admin' ? 'Create your first lab to get started' : 'No labs available at the moment'}</p>
+                    {userRole === 'super_admin' && (
                       <Button onClick={() => setShowLabDialog(true)} className="bg-blue-600 hover:bg-blue-700">
                         <Plus className="w-4 h-4 mr-2" />
                         Add Lab
