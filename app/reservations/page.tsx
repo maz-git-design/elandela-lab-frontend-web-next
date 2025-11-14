@@ -10,6 +10,7 @@ import { Calendar, Clock, Search, ChevronLeft, ChevronRight, CheckSquare, UserPl
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { getCurrentUserProfile, UserRole, canManageReservations } from '@/lib/auth/roles'
 
 interface Reservation {
   id: string
@@ -36,12 +37,22 @@ export default function ReservationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [labFilter, setLabFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
+  const [userRole, setUserRole] = useState<UserRole>('user')
+  const [currentUserId, setCurrentUserId] = useState<string>('')
 
   const itemsPerPage = 10
   const supabase = createClient()
 
   useEffect(() => {
-    fetchData()
+    const init = async () => {
+      const profile = await getCurrentUserProfile()
+      if (profile) {
+        setUserRole(profile.role)
+        setCurrentUserId(profile.id)
+      }
+      await fetchData()
+    }
+    init()
   }, [])
 
   async function fetchData() {
@@ -60,16 +71,22 @@ export default function ReservationsPage() {
   }
 
   async function fetchReservations() {
-    const { data, error } = await supabase
+    let query = supabase
       .from('reservations')
       .select(`
         *,
         profiles:user_id(email, full_name),
         reservation_equipment(equipment(name, code)),
-        reservation_activities(activities(name)),
+        reservation_activities(activities(id, name)),
         reservation_comments(comment_text)
       `)
       .order('requested_at', { ascending: false })
+
+    if (userRole === 'user') {
+      query = query.eq('user_id', currentUserId)
+    }
+
+    const { data, error } = await query
     if (error) console.error('Error fetching reservations:', error)
     if (data) setReservations(data as Reservation[])
   }
@@ -136,10 +153,12 @@ export default function ReservationsPage() {
               <UserPlus className="h-4 w-4 mr-2" />
               Request Reservation
             </Button>
-            <Button onClick={() => router.push('/reservations/manage')} variant="outline">
-              <CheckSquare className="h-4 w-4 mr-2" />
-              Manage Requests
-            </Button>
+            {canManageReservations(userRole) && (
+              <Button onClick={() => router.push('/reservations/manage')} variant="outline">
+                <CheckSquare className="h-4 w-4 mr-2" />
+                Manage Requests
+              </Button>
+            )}
           </div>
         </div>
 
@@ -287,16 +306,22 @@ export default function ReservationsPage() {
                             </Badge>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => router.push('/reservations/manage')}
-                              className="border-gray-300"
-                              title="Manage reservation workflow"
-                            >
-                              <Settings className="w-4 h-4 mr-2" />
-                              Manage
-                            </Button>
+                            {canManageReservations(userRole) ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.push('/reservations/manage')}
+                                className="border-gray-300"
+                                title="Manage reservation workflow"
+                              >
+                                <Settings className="w-4 h-4 mr-2" />
+                                Manage
+                              </Button>
+                            ) : (
+                              <Badge className={getStatusColor(reservation.status)}>
+                                {reservation.status || 'pending'}
+                              </Badge>
+                            )}
                           </td>
                         </tr>
                       ))}

@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BarChart3, TrendingUp, Users, Calendar, Activity } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { getCurrentUserProfile, UserRole } from '@/lib/auth/roles'
 
 interface FilterOptions {
   cohorts: Array<{ id: string; name: string }>
@@ -74,17 +75,48 @@ export default function AnalyticsPage() {
   })
 
   const [loading, setLoading] = useState(true)
+  const [userRole, setUserRole] = useState<UserRole>('user')
+  const [currentUserId, setCurrentUserId] = useState<string>('')
+  const [managedLabIds, setManagedLabIds] = useState<string[]>([])
 
   useEffect(() => {
-    fetchFilterOptions()
-    fetchAnalytics()
+    const init = async () => {
+      const profile = await getCurrentUserProfile()
+      if (profile) {
+        setUserRole(profile.role)
+        setCurrentUserId(profile.id)
+        if (profile.role === 'lab_admin' && profile.managed_labs) {
+          setManagedLabIds(profile.managed_labs)
+          if (profile.managed_labs.length > 0) {
+            setFilters(prev => ({ ...prev, lab_id: profile.managed_labs![0] }))
+          }
+        } else if (profile.role === 'user') {
+          setFilters(prev => ({ ...prev, user_id: profile.id }))
+        }
+      }
+      await fetchFilterOptions()
+      await fetchAnalytics()
+    }
+    init()
+  }, [])
+
+  useEffect(() => {
+    if (userRole) {
+      fetchAnalytics()
+    }
   }, [filters])
 
   const fetchFilterOptions = async () => {
+    let labsQuery = supabase.from('activities').select('id, name').order('name')
+
+    if (userRole === 'lab_admin' && managedLabIds.length > 0) {
+      labsQuery = labsQuery.in('id', managedLabIds)
+    }
+
     const [cohorts, academicYears, labs, activities, departments, users] = await Promise.all([
       supabase.from('cohorts').select('id, name').order('name'),
       supabase.from('academic_years').select('id, start_date, end_date').order('start_date', { ascending: false }),
-      supabase.from('activities').select('id, name').order('name'),
+      labsQuery,
       supabase.from('activities').select('id, name').order('name'),
       supabase.from('departments').select('id, name').order('name'),
       supabase.from('profiles').select('id, full_name, email').order('full_name')
@@ -109,13 +141,19 @@ export default function AnalyticsPage() {
   const fetchAttendanceStats = async () => {
     let query = supabase.from('attendance').select('*, profiles:user_id(cohort_id, cohorts(name)), activities:activity_id(name)')
 
+    if (userRole === 'user') {
+      query = query.eq('user_id', currentUserId)
+    } else if (userRole === 'lab_admin' && managedLabIds.length > 0) {
+      query = query.in('activity_id', managedLabIds)
+    }
+
     if (filters.cohort_id !== 'all') {
       query = query.eq('profiles.cohort_id', filters.cohort_id)
     }
     if (filters.activity_id !== 'all') {
       query = query.eq('activity_id', filters.activity_id)
     }
-    if (filters.user_id !== 'all') {
+    if (filters.user_id !== 'all' && userRole === 'super_admin') {
       query = query.eq('user_id', filters.user_id)
     }
     if (filters.date_from) {
@@ -171,12 +209,18 @@ export default function AnalyticsPage() {
   }
 
   const fetchReservationStats = async () => {
-    let query = supabase.from('reservations').select('*, profiles:user_id(cohort_id, cohorts(name)), reservation_equipment(equipment(name, category_id)), reservation_activities(activities(name))')
+    let query = supabase.from('reservations').select('*, profiles:user_id(cohort_id, cohorts(name)), reservation_equipment(equipment(name, category_id)), reservation_activities(activities(id, name))')
+
+    if (userRole === 'user') {
+      query = query.eq('user_id', currentUserId)
+    } else if (userRole === 'lab_admin' && managedLabIds.length > 0) {
+      query = query.filter('reservation_activities.activities.id', 'in', `(${managedLabIds.join(',')})`)
+    }
 
     if (filters.cohort_id !== 'all') {
       query = query.eq('profiles.cohort_id', filters.cohort_id)
     }
-    if (filters.user_id !== 'all') {
+    if (filters.user_id !== 'all' && userRole === 'super_admin') {
       query = query.eq('user_id', filters.user_id)
     }
     if (filters.date_from) {

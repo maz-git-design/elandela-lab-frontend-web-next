@@ -19,6 +19,7 @@ import {
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
+import { getCurrentUserProfile, UserRole } from '@/lib/auth/roles'
 
 interface Lab {
   id: string
@@ -53,6 +54,8 @@ export default function LabManagementPage() {
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [categories, setCategories] = useState<EquipmentCategory[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [userRole, setUserRole] = useState<UserRole>('user')
+  const [managedLabIds, setManagedLabIds] = useState<string[]>([])
 
   const [showEquipmentDialog, setShowEquipmentDialog] = useState(false)
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null)
@@ -73,8 +76,18 @@ export default function LabManagementPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    fetchLabs()
-    fetchCategories()
+    const init = async () => {
+      const profile = await getCurrentUserProfile()
+      if (profile) {
+        setUserRole(profile.role)
+        if (profile.role === 'lab_admin' && profile.managed_labs) {
+          setManagedLabIds(profile.managed_labs)
+        }
+      }
+      await fetchLabs()
+      await fetchCategories()
+    }
+    init()
   }, [])
 
   useEffect(() => {
@@ -84,10 +97,16 @@ export default function LabManagementPage() {
   }, [selectedLab])
 
   const fetchLabs = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('activities')
       .select('id, name, lab_code, building, room_number')
       .order('name')
+
+    if (userRole === 'lab_admin' && managedLabIds.length > 0) {
+      query = query.in('id', managedLabIds)
+    }
+
+    const { data } = await query
 
     const mappedLabs = (data || []).map(lab => ({
       id: lab.id,
@@ -97,6 +116,10 @@ export default function LabManagementPage() {
       room_number: lab.room_number
     }))
     setLabs(mappedLabs)
+
+    if (mappedLabs.length > 0 && !selectedLab) {
+      setSelectedLab(mappedLabs[0])
+    }
   }
 
   const fetchCategories = async () => {

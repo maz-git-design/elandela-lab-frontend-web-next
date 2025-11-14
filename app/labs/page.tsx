@@ -826,10 +826,12 @@ export default function LabsPage() {
                         className="pl-10 border-gray-200"
                       />
                     </div>
-                    <Button onClick={() => setShowCategoryDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Category
-                    </Button>
+                    {userRole === 'super_admin' && (
+                      <Button onClick={() => setShowCategoryDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Category
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardHeader>
@@ -860,31 +862,33 @@ export default function LabsPage() {
                             {category.description || 'No description available'}
                           </p>
                         </div>
-                        <div className="bg-gray-50 px-5 py-3 flex gap-2 border-t border-gray-100">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingCategory(category)
-                              setCategoryForm({
-                                name: category.name,
-                                description: category.description || ''
-                              })
-                              setShowCategoryDialog(true)
-                            }}
-                            className="hover:bg-gray-200"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteCategory(category.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
+                        {userRole === 'super_admin' && (
+                          <div className="bg-gray-50 px-5 py-3 flex gap-2 border-t border-gray-100">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingCategory(category)
+                                setCategoryForm({
+                                  name: category.name,
+                                  description: category.description || ''
+                                })
+                                setShowCategoryDialog(true)
+                              }}
+                              className="hover:bg-gray-200"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteCategory(category.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       ))}
                     </div>
