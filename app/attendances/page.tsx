@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Search, Plus, Clock, Calendar, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { supabase } from '@/lib/supabase/client'
+import { getCurrentUserProfile, UserRole } from '@/lib/auth/roles'
 
 interface Attendance {
   id: string
@@ -64,6 +65,7 @@ export default function AttendancesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [isMarkAttendanceOpen, setIsMarkAttendanceOpen] = useState(false)
+  const [userRole, setUserRole] = useState<UserRole>('user')
 
   const [reservations, setReservations] = useState<ReservationForAttendance[]>([])
   const [reservationSearch, setReservationSearch] = useState('')
@@ -72,6 +74,10 @@ export default function AttendancesPage() {
 
   useEffect(() => {
     const init = async () => {
+      const profile = await getCurrentUserProfile()
+      if (profile) {
+        setUserRole(profile.role)
+      }
       await fetchAttendances()
       setLoading(false)
     }
@@ -234,18 +240,19 @@ export default function AttendancesPage() {
             <h1 className="text-3xl font-bold">Attendance Records</h1>
             <p className="text-gray-600 mt-2">View and manage attendance records</p>
           </div>
-          <Dialog open={isMarkAttendanceOpen} onOpenChange={(open) => {
-            setIsMarkAttendanceOpen(open)
-            if (open) {
-              fetchReservationsForMarking()
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Mark Attendance
-              </Button>
-            </DialogTrigger>
+          {(userRole === 'lab_admin' || userRole === 'super_admin') && (
+            <Dialog open={isMarkAttendanceOpen} onOpenChange={(open) => {
+              setIsMarkAttendanceOpen(open)
+              if (open) {
+                fetchReservationsForMarking()
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Mark Attendance
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Mark Attendance</DialogTitle>
@@ -348,6 +355,7 @@ export default function AttendancesPage() {
               </div>
             </DialogContent>
           </Dialog>
+          )}
         </div>
 
         <div className="grid gap-4 md:grid-cols-4">

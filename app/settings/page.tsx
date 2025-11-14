@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getDataSourceConfig, setDataSourceConfig, DataSourceType } from '@/lib/config/data-source'
-import { User, Mail, Lock, Save, AlertTriangle, Database, Server } from 'lucide-react'
+import { User, Mail, Lock, Save, AlertTriangle, Database, Server, Globe, Settings } from 'lucide-react'
+import { getCurrentUserProfile, UserRole } from '@/lib/auth/roles'
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false)
@@ -26,11 +27,27 @@ export default function SettingsPage() {
   const [dataSource, setDataSource] = useState<DataSourceType>('supabase')
   const [apiUrl, setApiUrl] = useState('')
   const [dataSourceMessage, setDataSourceMessage] = useState('')
+  const [userRole, setUserRole] = useState<UserRole>('user')
+  const [language, setLanguage] = useState('en')
+  const [ldapConfig, setLdapConfig] = useState({
+    server: '',
+    port: '389',
+    baseDn: '',
+    bindDn: '',
+    bindPassword: '',
+    enabled: false,
+  })
+  const [ldapMessage, setLdapMessage] = useState('')
 
   const supabase = createClient()
 
   useEffect(() => {
-    const fetchProfile = async () => {
+    const init = async () => {
+      const profile = await getCurrentUserProfile()
+      if (profile) {
+        setUserRole(profile.role)
+      }
+
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         const { data } = await supabase
@@ -44,12 +61,15 @@ export default function SettingsPage() {
           full_name: data?.full_name || '',
         })
       }
-    }
-    fetchProfile()
 
-    const config = getDataSourceConfig()
-    setDataSource(config.type)
-    setApiUrl(config.apiBaseUrl || '')
+      const config = getDataSourceConfig()
+      setDataSource(config.type)
+      setApiUrl(config.apiBaseUrl || '')
+
+      const savedLanguage = localStorage.getItem('language') || 'en'
+      setLanguage(savedLanguage)
+    }
+    init()
   }, [])
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -142,6 +162,17 @@ export default function SettingsPage() {
     setDataSourceMessage('Data source configuration saved successfully. Refresh the page to apply changes.')
   }
 
+  const handleLanguageSave = () => {
+    localStorage.setItem('language', language)
+    setMessage('Language preference saved. Refresh the page to apply changes.')
+  }
+
+  const handleLdapSave = () => {
+    setLdapMessage('')
+    localStorage.setItem('ldapConfig', JSON.stringify(ldapConfig))
+    setLdapMessage('LDAP configuration saved successfully.')
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6 max-w-4xl">
@@ -152,7 +183,7 @@ export default function SettingsPage() {
 
         {message && (
           <div className={`p-4 rounded-lg ${
-            message.includes('success')
+            message.includes('success') || message.includes('saved')
               ? 'bg-green-50 text-green-800 border border-green-200'
               : 'bg-red-50 text-red-800 border border-red-200'
           }`}>
@@ -161,6 +192,148 @@ export default function SettingsPage() {
         )}
 
         <Card className="border-gray-200">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-blue-600" />
+              <CardTitle>Language Preference</CardTitle>
+            </div>
+            <CardDescription>Choose your preferred language</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="language">Language</Label>
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger className="border-gray-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="en">
+                      <div className="flex items-center gap-2">
+                        <span>🇬🇧</span>
+                        <span>English</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="fr">
+                      <div className="flex items-center gap-2">
+                        <span>🇫🇷</span>
+                        <span>Français</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button onClick={handleLanguageSave} className="gap-2">
+                <Save className="h-4 w-4" />
+                Save Language Preference
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {userRole === 'super_admin' && (
+          <Card className="border-gray-200">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-blue-600" />
+                <CardTitle>LDAP Configuration</CardTitle>
+              </div>
+              <CardDescription>Configure LDAP/Active Directory integration</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {ldapMessage && (
+                  <div className="p-4 rounded-lg bg-green-50 text-green-800 border border-green-200">
+                    {ldapMessage}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="ldap_enabled"
+                      checked={ldapConfig.enabled}
+                      onChange={(e) => setLdapConfig({ ...ldapConfig, enabled: e.target.checked })}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <Label htmlFor="ldap_enabled">Enable LDAP Authentication</Label>
+                  </div>
+                </div>
+
+                {ldapConfig.enabled && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="ldap_server">LDAP Server</Label>
+                        <Input
+                          id="ldap_server"
+                          value={ldapConfig.server}
+                          onChange={(e) => setLdapConfig({ ...ldapConfig, server: e.target.value })}
+                          className="border-gray-200"
+                          placeholder="ldap.example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ldap_port">Port</Label>
+                        <Input
+                          id="ldap_port"
+                          value={ldapConfig.port}
+                          onChange={(e) => setLdapConfig({ ...ldapConfig, port: e.target.value })}
+                          className="border-gray-200"
+                          placeholder="389"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="ldap_base_dn">Base DN</Label>
+                      <Input
+                        id="ldap_base_dn"
+                        value={ldapConfig.baseDn}
+                        onChange={(e) => setLdapConfig({ ...ldapConfig, baseDn: e.target.value })}
+                        className="border-gray-200"
+                        placeholder="dc=example,dc=com"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="ldap_bind_dn">Bind DN</Label>
+                      <Input
+                        id="ldap_bind_dn"
+                        value={ldapConfig.bindDn}
+                        onChange={(e) => setLdapConfig({ ...ldapConfig, bindDn: e.target.value })}
+                        className="border-gray-200"
+                        placeholder="cn=admin,dc=example,dc=com"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="ldap_bind_password">Bind Password</Label>
+                      <Input
+                        id="ldap_bind_password"
+                        type="password"
+                        value={ldapConfig.bindPassword}
+                        onChange={(e) => setLdapConfig({ ...ldapConfig, bindPassword: e.target.value })}
+                        className="border-gray-200"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </>
+                )}
+
+                <Button onClick={handleLdapSave} className="gap-2">
+                  <Save className="h-4 w-4" />
+                  Save LDAP Configuration
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {userRole === 'super_admin' && (
+          <Card className="border-gray-200">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-blue-600" />
@@ -228,6 +401,7 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <Card className="border-gray-200">
           <CardHeader>
