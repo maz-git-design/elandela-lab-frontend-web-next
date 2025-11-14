@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Search, Plus, Clock, Calendar, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -349,43 +350,50 @@ export default function AttendancesPage() {
           </Dialog>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <Input
-              type="text"
-              placeholder="Search by name or email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant={statusFilter === 'all' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('all')}
-            >
-              All
-            </Button>
-            <Button
-              variant={statusFilter === 'present' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('present')}
-            >
-              Present
-            </Button>
-            <Button
-              variant={statusFilter === 'late' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('late')}
-            >
-              Late
-            </Button>
-            <Button
-              variant={statusFilter === 'absent' ? 'default' : 'outline'}
-              onClick={() => setStatusFilter('absent')}
-            >
-              Absent
-            </Button>
-          </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Total Records</CardTitle>
+              <CheckCircle className="h-4 w-4 text-gray-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{attendances.length}</div>
+              <p className="text-xs text-gray-600 mt-1">All attendance records</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Present</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{attendances.filter(a => a.status === 'present').length}</div>
+              <p className="text-xs text-gray-600 mt-1">Marked present</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Late</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{attendances.filter(a => a.status === 'late').length}</div>
+              <p className="text-xs text-gray-600 mt-1">Arrived late</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium">Absent</CardTitle>
+              <XCircle className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{attendances.filter(a => a.status === 'absent').length}</div>
+              <p className="text-xs text-gray-600 mt-1">Did not attend</p>
+            </CardContent>
+          </Card>
         </div>
 
         {loading ? (
@@ -394,12 +402,42 @@ export default function AttendancesPage() {
           </div>
         ) : (
           <>
-            <Card>
+            <Card className="border-gray-200">
               <CardHeader>
-                <CardTitle>Attendance Records</CardTitle>
-                <CardDescription>
-                  {filteredAttendances.length} total records
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Attendance Records</CardTitle>
+                    <CardDescription>View and manage attendance records</CardDescription>
+                  </div>
+                  <div className="flex gap-2">
+                    <Select value={statusFilter} onValueChange={(value) => {
+                      setStatusFilter(value)
+                      setCurrentPage(1)
+                    }}>
+                      <SelectTrigger className="w-40 border-gray-300">
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="present">Present</SelectItem>
+                        <SelectItem value="late">Late</SelectItem>
+                        <SelectItem value="absent">Absent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <div className="relative w-64">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="Search by name or email..."
+                        value={searchTerm}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value)
+                          setCurrentPage(1)
+                        }}
+                        className="pl-10 border-gray-200"
+                      />
+                    </div>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
