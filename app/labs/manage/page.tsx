@@ -16,10 +16,11 @@ import {
   Trash2,
   Search
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 import { getCurrentUserProfile, UserRole } from '@/lib/auth/roles'
+import { useSearchParams } from 'next/navigation'
 
 interface Lab {
   id: string
@@ -48,7 +49,10 @@ interface EquipmentCategory {
   name: string
 }
 
-export default function LabManagementPage() {
+function LabManagementPageContent() {
+  const searchParams = useSearchParams()
+  const labIdFromUrl = searchParams.get('lab')
+
   const [labs, setLabs] = useState<Lab[]>([])
   const [selectedLab, setSelectedLab] = useState<Lab | null>(null)
   const [equipment, setEquipment] = useState<Equipment[]>([])
@@ -56,6 +60,7 @@ export default function LabManagementPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [userRole, setUserRole] = useState<UserRole>('user')
   const [managedLabIds, setManagedLabIds] = useState<string[]>([])
+  const [canManageEquipment, setCanManageEquipment] = useState(false)
 
   const [showEquipmentDialog, setShowEquipmentDialog] = useState(false)
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null)
@@ -96,6 +101,23 @@ export default function LabManagementPage() {
     }
     init()
   }, [])
+
+  useEffect(() => {
+    if (labIdFromUrl && labs.length > 0) {
+      const lab = labs.find(l => l.id === labIdFromUrl)
+      if (lab) {
+        setSelectedLab(lab)
+      }
+    }
+  }, [labIdFromUrl, labs])
+
+  useEffect(() => {
+    if (selectedLab) {
+      const canManage = userRole === 'super_admin' ||
+                        (userRole === 'lab_admin' && managedLabIds.includes(selectedLab.id))
+      setCanManageEquipment(canManage)
+    }
+  }, [selectedLab, userRole, managedLabIds])
 
   useEffect(() => {
     if (selectedLab) {
@@ -268,18 +290,20 @@ export default function LabManagementPage() {
                     {equipment.length} items total
                   </p>
                 </div>
-                <Button
-                  onClick={() => {
-                    setShowEquipmentDialog(true)
-                    setEquipmentForm({
-                      ...equipmentForm,
-                      location: selectedLab.name
-                    })
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Equipment
-                </Button>
+                {canManageEquipment && (
+                  <Button
+                    onClick={() => {
+                      setShowEquipmentDialog(true)
+                      setEquipmentForm({
+                        ...equipmentForm,
+                        location: selectedLab.name
+                      })
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Equipment
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -325,38 +349,42 @@ export default function LabManagementPage() {
                               </Badge>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingEquipment(item)
-                                    setEquipmentForm({
-                                      name: item.name,
-                                      code: item.code,
-                                      serial_number: item.serial_number || '',
-                                      model: item.model || '',
-                                      description: item.description || '',
-                                      category_id: item.category_id || '',
-                                      current_status: item.current_status || 'available',
-                                      delivery_date: '',
-                                      entry_date: '',
-                                      location: item.location || ''
-                                    })
-                                    setShowEquipmentDialog(true)
-                                  }}
-                                >
-                                  <Edit className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDeleteEquipment(item.id)}
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
+                              {canManageEquipment ? (
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingEquipment(item)
+                                      setEquipmentForm({
+                                        name: item.name,
+                                        code: item.code,
+                                        serial_number: item.serial_number || '',
+                                        model: item.model || '',
+                                        description: item.description || '',
+                                        category_id: item.category_id || '',
+                                        current_status: item.current_status || 'available',
+                                        delivery_date: '',
+                                        entry_date: '',
+                                        location: item.location || ''
+                                      })
+                                      setShowEquipmentDialog(true)
+                                    }}
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeleteEquipment(item.id)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="text-sm text-gray-500">View only</span>
+                              )}
                             </td>
                           </tr>
                         ))
@@ -515,5 +543,19 @@ export default function LabManagementPage() {
         </DialogContent>
       </Dialog>
     </DashboardLayout>
+  )
+}
+
+export default function LabManagementPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <LabManagementPageContent />
+    </Suspense>
   )
 }

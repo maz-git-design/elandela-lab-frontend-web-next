@@ -83,9 +83,6 @@ export default function LabsPage() {
   const [showLabDialog, setShowLabDialog] = useState(false)
   const [showEquipmentDialog, setShowEquipmentDialog] = useState(false)
   const [showCategoryDialog, setShowCategoryDialog] = useState(false)
-  const [showViewEquipmentDialog, setShowViewEquipmentDialog] = useState(false)
-  const [viewingLab, setViewingLab] = useState<Lab | null>(null)
-  const [viewingEquipment, setViewingEquipment] = useState<Equipment[]>([])
   const [editingLab, setEditingLab] = useState<Lab | null>(null)
   const [editingEquipment, setEditingEquipment] = useState<Equipment | null>(null)
   const [editingCategory, setEditingCategory] = useState<EquipmentCategory | null>(null)
@@ -203,28 +200,8 @@ export default function LabsPage() {
     }
   }
 
-  async function fetchLabEquipment(labId: string) {
-    const { data, error } = await supabase
-      .from('equipment')
-      .select(`
-        *,
-        equipment_categories(name)
-      `)
-      .eq('current_lab_id', labId)
-      .order('name')
-
-    if (error) {
-      console.error('Error fetching lab equipment:', error)
-      return []
-    }
-    return (data as Equipment[]) || []
-  }
-
-  const handleViewEquipment = async (lab: Lab) => {
-    setViewingLab(lab)
-    const equipmentData = await fetchLabEquipment(lab.id)
-    setViewingEquipment(equipmentData)
-    setShowViewEquipmentDialog(true)
+  const handleViewEquipment = (lab: Lab) => {
+    router.push(`/labs/manage?lab=${lab.id}`)
   }
 
   async function fetchLabs() {
@@ -713,7 +690,7 @@ export default function LabsPage() {
                                   Manage
                                 </Button>
                               </Link>
-                              {canManageLabs(userRole) && (
+                              {userRole === 'super_admin' && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -1454,133 +1431,6 @@ export default function LabsPage() {
               >
                 {editingCategory ? 'Update' : 'Create'} Category
               </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showViewEquipmentDialog} onOpenChange={setShowViewEquipmentDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl">Equipment in {viewingLab?.name}</DialogTitle>
-            <DialogDescription>
-              View all equipment available in this laboratory
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            {viewingLab && (
-              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Lab Code:</span> {viewingLab.code || 'N/A'}
-                  </div>
-                  {viewingLab.building && (
-                    <div>
-                      <span className="font-medium">Location:</span> {viewingLab.building}, Room {viewingLab.room_number}
-                    </div>
-                  )}
-                  {viewingLab.capacity_equipment && (
-                    <div>
-                      <span className="font-medium">Equipment Capacity:</span> {viewingLab.capacity_equipment}
-                    </div>
-                  )}
-                  <div>
-                    <span className="font-medium">Total Equipment:</span> {viewingEquipment.length}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {viewingEquipment.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Equipment Found</h3>
-                <p className="text-gray-600">This lab currently has no equipment assigned to it.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="grid gap-2 text-sm font-medium text-gray-700 px-2">
-                  <div className="grid grid-cols-12 gap-4">
-                    <div className="col-span-3">Equipment Name</div>
-                    <div className="col-span-2">Code</div>
-                    <div className="col-span-2">Category</div>
-                    <div className="col-span-2">Serial Number</div>
-                    <div className="col-span-2">Model</div>
-                    <div className="col-span-1">Status</div>
-                  </div>
-                </div>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {viewingEquipment.map((equip) => (
-                    <div
-                      key={equip.id}
-                      className="grid grid-cols-12 gap-4 items-center p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors text-sm"
-                    >
-                      <div className="col-span-3 font-medium text-gray-900 truncate" title={equip.name}>
-                        {equip.name}
-                      </div>
-                      <div className="col-span-2 text-gray-600 truncate">
-                        <code className="text-xs bg-gray-100 px-2 py-1 rounded">{equip.code}</code>
-                      </div>
-                      <div className="col-span-2 text-gray-600 truncate">
-                        {equip.equipment_categories?.name || 'N/A'}
-                      </div>
-                      <div className="col-span-2 text-gray-600 text-xs truncate">
-                        {equip.serial_number || 'N/A'}
-                      </div>
-                      <div className="col-span-2 text-gray-600 text-xs truncate">
-                        {equip.model || 'N/A'}
-                      </div>
-                      <div className="col-span-1">
-                        <Badge className={
-                          equip.current_status === 'available' ? 'bg-green-100 text-green-700' :
-                          equip.current_status === 'in_use' ? 'bg-orange-100 text-orange-700' :
-                          equip.current_status === 'under_maintenance' ? 'bg-red-100 text-red-700' :
-                          'bg-gray-100 text-gray-700'
-                        }>
-                          {equip.current_status?.replace('_', ' ') || 'unknown'}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-4">
-                  <h4 className="font-semibold mb-3 text-sm">Equipment Status Summary</h4>
-                  <div className="grid grid-cols-4 gap-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                      <span className="text-gray-700">
-                        Available: <strong>{viewingEquipment.filter(e => e.current_status === 'available').length}</strong>
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                      <span className="text-gray-700">
-                        In Use: <strong>{viewingEquipment.filter(e => e.current_status === 'in_use').length}</strong>
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                      <span className="text-gray-700">
-                        Maintenance: <strong>{viewingEquipment.filter(e => e.current_status === 'under_maintenance').length}</strong>
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-gray-500"></div>
-                      <span className="text-gray-700">
-                        Other: <strong>{viewingEquipment.filter(e => !['available', 'in_use', 'under_maintenance'].includes(e.current_status || '')).length}</strong>
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end pt-4 border-t">
-              <DialogClose asChild>
-                <Button variant="outline">Close</Button>
-              </DialogClose>
             </div>
           </div>
         </DialogContent>
