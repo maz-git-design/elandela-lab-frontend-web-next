@@ -21,9 +21,10 @@ import { cn } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { getCurrentUserProfile, UserRole } from '@/lib/auth/roles'
+import { useTranslation } from '@/lib/i18n/use-translation'
 
 interface MenuItem {
-  title: string
+  titleKey: string
   href: string
   icon: typeof LayoutDashboard
   roles: UserRole[]
@@ -31,49 +32,49 @@ interface MenuItem {
 
 const menuItems: MenuItem[] = [
   {
-    title: 'Dashboard',
+    titleKey: 'dashboard',
     href: '/dashboard',
     icon: LayoutDashboard,
     roles: ['user', 'lab_admin', 'super_admin'],
   },
   {
-    title: 'Analytics',
+    titleKey: 'analytics',
     href: '/analytics',
     icon: BarChart3,
     roles: ['user', 'lab_admin', 'super_admin'],
   },
   {
-    title: 'Attendances',
+    titleKey: 'attendances',
     href: '/attendances',
     icon: UserCheck,
     roles: ['user', 'lab_admin', 'super_admin'],
   },
   {
-    title: 'Reservations',
+    titleKey: 'reservations',
     href: '/reservations',
     icon: Calendar,
     roles: ['user', 'lab_admin', 'super_admin'],
   },
   {
-    title: 'Labs',
+    titleKey: 'labs',
     href: '/labs',
     icon: Microscope,
     roles: ['user', 'lab_admin', 'super_admin'],
   },
   {
-    title: 'Users',
+    titleKey: 'users',
     href: '/users',
     icon: Users,
     roles: ['super_admin'],
   },
   {
-    title: 'Management',
+    titleKey: 'management',
     href: '/management',
     icon: Layers,
     roles: ['super_admin'],
   },
   {
-    title: 'Admin',
+    titleKey: 'admin',
     href: '/admin',
     icon: Shield,
     roles: ['super_admin'],
@@ -82,7 +83,7 @@ const menuItems: MenuItem[] = [
 
 const bottomMenuItems = [
   {
-    title: 'Settings',
+    titleKey: 'settings',
     href: '/settings',
     icon: Settings,
   },
@@ -95,6 +96,7 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
   const pathname = usePathname()
+  const { t } = useTranslation()
   const [user, setUser] = useState<{ email: string; full_name?: string; role?: UserRole } | null>(null)
   const [userRole, setUserRole] = useState<UserRole>('user')
   const supabase = createClient()
@@ -151,7 +153,7 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  title={collapsed ? item.title : ''}
+                  title={collapsed ? t('nav', item.titleKey) : ''}
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors relative group',
                     collapsed ? 'justify-center' : '',
@@ -161,7 +163,7 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                   )}
                 >
                   <Icon className="h-5 w-5 flex-shrink-0" />
-                  {!collapsed && <span>{item.title}</span>}
+                  {!collapsed && <span>{t('nav', item.titleKey)}</span>}
                 </Link>
               )
             })}
@@ -200,7 +202,7 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                title={collapsed ? item.title : ''}
+                title={collapsed ? t('nav', item.titleKey) : ''}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                   collapsed ? 'justify-center' : '',
@@ -210,7 +212,7 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                 )}
               >
                 <Icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && <span>{item.title}</span>}
+                {!collapsed && <span>{t('nav', item.titleKey)}</span>}
               </Link>
             )
           })}
@@ -220,14 +222,14 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
               await supabase.auth.signOut()
               window.location.href = '/auth/login'
             }}
-            title={collapsed ? 'Logout' : ''}
+            title={collapsed ? t('auth', 'logout') : ''}
             className={cn(
               'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900',
               collapsed ? 'justify-center' : ''
             )}
           >
             <LogOut className="h-5 w-5 flex-shrink-0" />
-            {!collapsed && <span>Logout</span>}
+            {!collapsed && <span>{t('auth', 'logout')}</span>}
           </button>
         </div>
       </div>

@@ -5,8 +5,10 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserCheck, Calendar, Microscope, Users, Activity, TrendingUp, Package, Building } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
+import { useTranslation } from '@/lib/i18n/use-translation'
 
 export default function DashboardPage() {
+  const { t } = useTranslation()
   const [stats, setStats] = useState({
     attendances: 0,
     reservations: 0,
@@ -147,8 +149,8 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-1">Welcome back! Here is your lab overview.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">{t('dashboard', 'title')}</h1>
+          <p className="text-gray-600 mt-1">{t('dashboard', 'subtitle')}</p>
         </div>
 
         {loading ? (
